@@ -110,5 +110,8 @@ int main (int argc, char *argv[])
 
 static void sig(int signo)
 {
+   if (signo==SIGTSTP) {
+	kill(-getpid(), SIGTSTP);
+   }
 }
 

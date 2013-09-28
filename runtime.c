@@ -63,6 +63,7 @@
 	#define NBUILTINCOMMANDS (sizeof BuiltInCommands / sizeof(char*))
 
 	typedef struct bgjob_l {
+		int jid;
 		pid_t pid;
 		struct bgjob_l* next;
 	} bgjobL;
@@ -88,6 +89,10 @@
   	static void printJobs();
 	/* adds the new job to background job list */ 
 	static void addtoBgList(pid_t pid);
+	/* delete the job from background job list */
+	static int delfromBgList(pid_t pid);
+	/* return pid from jid */
+	static pid_t jid2pid(int jid);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -236,21 +241,25 @@ static bool ResolveExternalCmd(commandT* cmd)
    
 	static void RunBuiltInCmd(commandT* cmd)
 	{
-    if (!strcmp(cmd->name,"fg")) {
-
-    } 
-    if (!strcmp(cmd->name,"bg")) {
-
-    }
-    if (!strcmp(cmd->name,"jobs")) {
-      printJobs();
-    }
+    		if (!strcmp(cmd->argv[0],"fg")) {
+			
+   		}			 
+    		if (!strcmp(cmd->argv[0],"bg")) {
+			if (cmd->argv[1]==NULL) {
+				kill(bgjobs->pid, SIGCONT);
+			} else {
+				kill(jid2pid(atoi(cmd->argv[1])), SIGCONT);
+			}
+ 		} 			
+    		if (!strcmp(cmd->argv[0],"jobs")) {
+      			printJobs();
+    		}
 	}
 
   static void printJobs() {
     bgjobL *temp = bgjobs;
     while(temp != NULL) {
-      printf("[%d]", temp->pid);
+      printf("[%d][%d]", temp->jid,temp->pid);
       temp = temp->next;
     }
   }
@@ -292,6 +301,39 @@ static void addtoBgList(pid_t pid)
 	/* add the new job in the front of the list */
 	bgjobL* newJob = malloc(sizeof(bgjobL));
 	newJob->pid = pid;
+	if (bgjobs==NULL) {
+	   newJob->jid = 1;
+	} else {
+	   newJob->jid = bgjobs->jid++;
+	}	 
 	newJob->next = bgjobs;
-	bgjobs->newJob;
+	bgjobs = newJob;
 }
+
+/* delete a job from bg process list */
+static int delfromBgList(pid_t pid)
+{
+	bgjobL* curr = bgjobs; 
+	bgjobL* prev = NULL;
+	while ((!(curr->pid==pid)) && (curr!=NULL))  {
+		prev = curr;
+		curr = curr->next;
+	}	
+	if (curr==NULL) return 1; //pid not found from the list
+	
+	/* remove the job from the list */
+	prev->next = curr->next; 
+	free(curr);
+	return 0; //deletion completed successfully
+}
+
+       /* return pid given jid from bg list */
+static pid_t jid2pid(int jid) {
+	bgjobL* curr = bgjobs;
+	while ((!(curr->jid == jid)) && (curr!=NULL)) {
+		curr = curr->next;
+	}
+	if (curr==NULL) return (pid_t)0; //pid not found
+	return curr->pid;
+}	
+
