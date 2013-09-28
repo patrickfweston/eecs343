@@ -96,10 +96,13 @@
 	static int delfromjobs(pid_t pid);
 	/* return pid from jid */
 	static pid_t jid2pid(int jid);
+	/* change status from BG to FG*/
+	static void tofg(int jid);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
         int total_task;
+	int status;
 	void RunCmd(commandT** cmd, int n)
 	{
       		int i;
@@ -214,7 +217,6 @@ static bool ResolveExternalCmd(commandT* cmd)
 		   	/*parent waits for foreground job to terminate*/
 			if (!cmd->bg) {
 				addtojobs(pid,FG);
-				int status;
 				waitpid(pid,&status,0);
 		   	} else {
 	 			addtojobs(pid,BG);
@@ -248,7 +250,13 @@ static bool ResolveExternalCmd(commandT* cmd)
 	static void RunBuiltInCmd(commandT* cmd)
 	{
     		if (!strcmp(cmd->argv[0],"fg")) {
-			
+			if ((cmd->argv[1]==NULL) && (jobs !=NULL)) {
+				tofg(jobs->pid);
+				waitpid(jobs->pid, &status, 0);
+			} else {
+				tofg(atoi(cmd->argv[1]));
+				waitpid(jid2pid(atoi(cmd->argv[1])),&status,0);
+			}
    		}			 
     		if (!strcmp(cmd->argv[0],"bg")) {
 			if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
@@ -354,3 +362,12 @@ static pid_t jid2pid(int jid) {
 	return curr->pid;
 }	
 
+static void tofg(int jid)
+{
+	joblist *curr = jobs;
+	while ((!(curr->jid == jid)) && (curr!=NULL)) {
+		curr = curr->next;
+	}
+	if (curr==NULL) printf("error: cannot find job \n");
+	else curr->status = FG;
+}
