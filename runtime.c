@@ -82,7 +82,7 @@
 	/* runs a builtin command */
 	static void RunBuiltInCmd(commandT*);
 	/* checks whether a command is a builtin command */
-static bool IsBuiltIn(char*);
+	static bool IsBuiltIn(char*);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -130,7 +130,6 @@ static bool IsBuiltIn(char*);
 	void RunCmdRedirIn(commandT* cmd, char* file)
 	{
 	}
-
 
 /*Try to run an external command*/
 static void RunExternalCmd(commandT* cmd, bool fork)
@@ -264,4 +263,14 @@ void ReleaseCmdT(commandT **cmd){
   for(i = 0; i < (*cmd)->argc; i++)
     if((*cmd)->argv[i] != NULL) free((*cmd)->argv[i]);
   free(*cmd);
+}
+
+/* add a job to bg process list */
+void addtoBgList(pid_t pid) 
+{
+	/* add the new job in the front of the list */
+	bgjobL* newJob = malloc(sizeof(bgjobL));
+	newJob->pid = pid;
+	newJob->next = bgjobs;
+	bgjobs->newJob;
 }
