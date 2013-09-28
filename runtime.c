@@ -82,7 +82,9 @@
 	/* runs a builtin command */
 	static void RunBuiltInCmd(commandT*);
 	/* checks whether a command is a builtin command */
-static bool IsBuiltIn(char*);
+  static bool IsBuiltIn(char*);
+  /* prints the list of jobs */
+  static void printJobs();
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -232,8 +234,24 @@ static bool ResolveExternalCmd(commandT* cmd)
    
 	static void RunBuiltInCmd(commandT* cmd)
 	{
-	   Exec(cmd, FALSE);
+    if (!strcmp(cmd->name,"fg")) {
+
+    } 
+    if (!strcmp(cmd->name,"bg")) {
+
+    }
+    if (!strcmp(cmd->name,"jobs")) {
+      printJobs();
+    }
 	}
+
+  static void printJobs() {
+    bgjobL *temp = bgjobs;
+    while(temp != NULL) {
+      printf("[%d]", temp->pid);
+      temp = temp->next;
+    }
+  }
 
         void CheckJobs()
 	{
