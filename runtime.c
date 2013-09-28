@@ -67,7 +67,10 @@
 
 	typedef struct job_l {
 		int jid;
-		int status;
+		int status; /*fg or bg */
+                char* command;
+                char current;
+                char* state;
 		pid_t pid;
 		struct job_l* next;
 	} joblist;
@@ -91,7 +94,7 @@
   	/* prints the list of jobs */
   	static void printjobs();
 	/* adds the new job to background job list */ 
-	static void addtojobs(pid_t pid, int status);
+	static void addtojobs(pid_t pid, char* cmdline, int status);
 	/* delete the job from background job list */
 	static int delfromjobs(pid_t pid);
 	/* return pid from jid */
@@ -213,11 +216,11 @@ static bool ResolveExternalCmd(commandT* cmd)
 		   } else {
 		   	/*parent waits for foreground job to terminate*/
 			if (!cmd->bg) {
-				addtojobs(pid,FG);
+				addtojobs(pid, cmd->cmdline, FG);
 				int status;
 				waitpid(pid,&status,0);
 		   	} else {
-	 			addtojobs(pid,BG);
+	 			addtojobs(pid, cmd->cmdline, BG);
 			}
 		   }
 		} else {
@@ -265,7 +268,7 @@ static bool ResolveExternalCmd(commandT* cmd)
   static void printjobs() {
     joblist *temp = jobs;
     while(temp != NULL) {
-      printf("[%d][%d] \n", temp->jid,temp->pid);
+      printf("[%d] %c %s %s\n", temp->jid, temp->current, temp->state, temp->command);
       temp = temp->next;
     }
   }
@@ -302,7 +305,7 @@ void ReleaseCmdT(commandT **cmd){
 }
 
 /* add a job to process list */
-static void addtojobs(pid_t pid, int status) 
+static void addtojobs(pid_t pid, char* cmdline, int status) 
 {
 	/* add the new job to the of the list */
 	joblist *newJob = (joblist*)malloc(sizeof(joblist));
@@ -321,7 +324,27 @@ static void addtojobs(pid_t pid, int status)
 	} else { 
 	   newJob->jid = prev->jid+1;
            prev->next = newJob;
+
+           joblist* temp = malloc(sizeof(joblist));
+           temp = jobs;
+           while (temp != NULL)
+           {
+             if (temp->status != FG)
+             {
+               if (temp->current == '+') {
+                 temp->current = '-';
+               }
+               else {
+                 temp->current = ' ';
+               }
+             }
+             temp = temp->next;
+           }
 	}	 
+        newJob->command = cmdline;
+        newJob->current = '+';
+        newJob->state = "Running";
+        
 	newJob->next = NULL;
 	newJob->status = status;
 }
