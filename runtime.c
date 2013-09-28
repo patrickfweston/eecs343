@@ -83,6 +83,11 @@
 	static void RunBuiltInCmd(commandT*);
 	/* checks whether a command is a builtin command */
 	static bool IsBuiltIn(char*);
+  	static bool IsBuiltIn(char*);
+  	/* prints the list of jobs */
+  	static void printJobs();
+	/* adds the new job to background job list */ 
+	static void addtoBgList(pid_t pid);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -231,8 +236,24 @@ static bool ResolveExternalCmd(commandT* cmd)
    
 	static void RunBuiltInCmd(commandT* cmd)
 	{
-	   Exec(cmd, FALSE);
+    if (!strcmp(cmd->name,"fg")) {
+
+    } 
+    if (!strcmp(cmd->name,"bg")) {
+
+    }
+    if (!strcmp(cmd->name,"jobs")) {
+      printJobs();
+    }
 	}
+
+  static void printJobs() {
+    bgjobL *temp = bgjobs;
+    while(temp != NULL) {
+      printf("[%d]", temp->pid);
+      temp = temp->next;
+    }
+  }
 
         void CheckJobs()
 	{
@@ -266,7 +287,7 @@ void ReleaseCmdT(commandT **cmd){
 }
 
 /* add a job to bg process list */
-void addtoBgList(pid_t pid) 
+static void addtoBgList(pid_t pid) 
 {
 	/* add the new job in the front of the list */
 	bgjobL* newJob = malloc(sizeof(bgjobL));
