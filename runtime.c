@@ -88,20 +88,20 @@
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
-    int total_task;
+        int total_task;
 	void RunCmd(commandT** cmd, int n)
 	{
-      int i;
-      total_task = n;
-      if(n == 1)
-          RunCmdFork(cmd[0], TRUE);
-      else{
-        RunCmdPipe(cmd[0], cmd[1]);
-        for(i = 0; i < n; i++)
-          ReleaseCmdT(&cmd[i]);
-      }
+      		int i;
+      		total_task = n;
+      		if(n == 1)
+			RunCmdFork(cmd[0], TRUE);
+      		else {
+        		RunCmdPipe(cmd[0], cmd[1]);
+        		for(i = 0; i < n; i++)
+         		ReleaseCmdT(&cmd[i]);
+      		}
 	}
-
+	
 	void RunCmdFork(commandT* cmd, bool fork)
 	{
 		if (cmd->argc<=0)
@@ -119,7 +119,7 @@
 	void RunCmdBg(commandT* cmd)
 	{
 		// TODO
-	}
+	}	
 
 	void RunCmdPipe(commandT* cmd1, commandT* cmd2)
 	{
@@ -185,7 +185,7 @@ static bool ResolveExternalCmd(commandT* cmd)
     if(stat(buf, &fs) >= 0){
       if(S_ISDIR(fs.st_mode) == 0)
 	if(access(buf,X_OK) == 0){/*Whether it's an executable or the user has required permisson to run it*/
-	  cmd->name = strdup(buf); 
+	  cmd->name = strdup(buf); // path in name field 
 	  return TRUE;
 	}
     }
@@ -195,16 +195,31 @@ static bool ResolveExternalCmd(commandT* cmd)
 
 	static void Exec(commandT* cmd, bool forceFork)
 	{
+		pid_t pid;
+		if (forceFork) {
+		   if ((pid=fork())==0) {
+			execv(cmd->name, cmd->argv);
+		   }	
+		} else {
+		        execv(cmd->name, cmd->argv);
+		}		
 	}
 
         static bool IsBuiltIn(char* cmd)
         {
-        	return FALSE;     
+		if (!strcmp(cmd,"fg")) 
+			return TRUE;
+		if (!strcmp(cmd,"bg"))
+			return TRUE;
+		if (!strcmp(cmd,"jobs"))
+			return TRUE;	
+		return FALSE;     
         }
 
    
 	static void RunBuiltInCmd(commandT* cmd)
 	{
+	   Exec(cmd, FALSE);
 	}
 
         void CheckJobs()

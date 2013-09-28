@@ -34,6 +34,7 @@
 	#include <stdlib.h>
 	#include <signal.h>
         #include <string.h>
+	#include <stdio.h>
 
   /************Private include**********************************************/
 	#include "tsh.h"
@@ -71,14 +72,27 @@ int main (int argc, char *argv[])
 
 	while (!forceExit) /* repeat forever */
 	{
+		/* print prompt */
+		printf("tsh> ");
+
 		/* read command line */
 		getCommandLine(&cmdLine, BUFSIZE);
-
+	
+	/* exit upon eof condition */
+	if (feof(stdin)) 
+	{
+	  forceExit=TRUE;
+          continue;
+	}
+	
         if(strcmp(cmdLine, "exit") == 0)
         {
           forceExit=TRUE;
           continue;
         }
+
+	/* print commandline to standard output */
+	/* printf("%s", cmdLine); */
 
 		/* checks the status of background jobs */
 		CheckJobs();

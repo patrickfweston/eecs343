@@ -157,6 +157,7 @@ void Interpret(char* cmdLine)
       else quotation2 = 1;
     }
 
+    //task = # of cmds
     if(cmdLine[i] == '|' && quotation1 != 1 && quotation2 != 1){
       task ++;
     }
