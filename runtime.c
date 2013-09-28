@@ -1,6 +1,4 @@
-/***************************************************************************
- *  Title: Runtime environment 
- * -------------------------------------------------------------------------
+ /*
  *    Purpose: Runs commands
  *    Author: Stefan Birrer
  *    Version: $Revision: 1.1 $
@@ -84,7 +82,7 @@
 	/* runs a builtin command */
 	static void RunBuiltInCmd(commandT*);
 	/* checks whether a command is a builtin command */
-	static bool IsBuiltIn(char*);
+static bool IsBuiltIn(char*);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -199,10 +197,25 @@ static bool ResolveExternalCmd(commandT* cmd)
 		if (forceFork) {
 		   if ((pid=fork())==0) {
 			execv(cmd->name, cmd->argv);
-		   }	
+		   	exit(0);
+		   } else {
+		   	/*parent waits for foreground job to terminate*/
+			if (!cmd->bg) {
+				int status;
+				waitpid(pid,&status,0);
+			}
+		   }
 		} else {
 		        execv(cmd->name, cmd->argv);
-		}		
+		}	
+		
+		/*
+		 parent waits for foreground job
+		if (!cmd->bg) {
+			int status;
+			waitpid(pid, &status, 0);	
+		}
+		*/
 	}
 
         static bool IsBuiltIn(char* cmd)
