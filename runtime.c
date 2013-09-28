@@ -33,6 +33,9 @@
  *
  ***************************************************************************/
 	#define __RUNTIME_IMPL__
+	#define FG 0
+	#define BG 1
+	#define ST 2
 
   /************System include***********************************************/
 	#include <assert.h>
@@ -62,14 +65,15 @@
 
 	#define NBUILTINCOMMANDS (sizeof BuiltInCommands / sizeof(char*))
 
-	typedef struct bgjob_l {
+	typedef struct job_l {
 		int jid;
+		int status;
 		pid_t pid;
-		struct bgjob_l* next;
-	} bgjobL;
+		struct job_l* next;
+	} joblist;
 
 	/* the pids of the background processes */
-	bgjobL *bgjobs = NULL;
+	joblist *jobs = NULL;
 
   /************Function Prototypes******************************************/
 	/* run command */
@@ -84,13 +88,12 @@
 	static void RunBuiltInCmd(commandT*);
 	/* checks whether a command is a builtin command */
 	static bool IsBuiltIn(char*);
-  	static bool IsBuiltIn(char*);
   	/* prints the list of jobs */
-  	static void printJobs();
+  	static void printjobs();
 	/* adds the new job to background job list */ 
-	static void addtoBgList(pid_t pid);
+	static void addtojobs(pid_t pid, int status);
 	/* delete the job from background job list */
-	static int delfromBgList(pid_t pid);
+	static int delfromjobs(pid_t pid);
 	/* return pid from jid */
 	static pid_t jid2pid(int jid);
   /************External Declaration*****************************************/
@@ -210,8 +213,11 @@ static bool ResolveExternalCmd(commandT* cmd)
 		   } else {
 		   	/*parent waits for foreground job to terminate*/
 			if (!cmd->bg) {
+				addtojobs(pid,FG);
 				int status;
 				waitpid(pid,&status,0);
+		   	} else {
+	 			addtojobs(pid,BG);
 			}
 		   }
 		} else {
@@ -245,21 +251,21 @@ static bool ResolveExternalCmd(commandT* cmd)
 			
    		}			 
     		if (!strcmp(cmd->argv[0],"bg")) {
-			if (cmd->argv[1]==NULL) {
-				kill(bgjobs->pid, SIGCONT);
+			if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
+				kill(jobs->pid, SIGCONT);
 			} else {
 				kill(jid2pid(atoi(cmd->argv[1])), SIGCONT);
 			}
  		} 			
     		if (!strcmp(cmd->argv[0],"jobs")) {
-      			printJobs();
+      			printjobs();
     		}
 	}
 
-  static void printJobs() {
-    bgjobL *temp = bgjobs;
+  static void printjobs() {
+    joblist *temp = jobs;
     while(temp != NULL) {
-      printf("[%d][%d]", temp->jid,temp->pid);
+      printf("[%d][%d] \n", temp->jid,temp->pid);
       temp = temp->next;
     }
   }
@@ -295,26 +301,37 @@ void ReleaseCmdT(commandT **cmd){
   free(*cmd);
 }
 
-/* add a job to bg process list */
-static void addtoBgList(pid_t pid) 
+/* add a job to process list */
+static void addtojobs(pid_t pid, int status) 
 {
-	/* add the new job in the front of the list */
-	bgjobL* newJob = malloc(sizeof(bgjobL));
+	/* add the new job to the of the list */
+	joblist *newJob = (joblist*)malloc(sizeof(joblist));
 	newJob->pid = pid;
-	if (bgjobs==NULL) {
+	
+	joblist* curr=jobs;
+	joblist* prev=jobs;
+	while (curr!=NULL) { 
+	  prev=curr;	
+	  curr=curr->next;
+	}
+
+	if (jobs==NULL) {
 	   newJob->jid = 1;
-	} else {
-	   newJob->jid = bgjobs->jid++;
+	   jobs=newJob;
+	} else { 
+	   newJob->jid = prev->jid+1;
+           prev->next = newJob;
 	}	 
-	newJob->next = bgjobs;
-	bgjobs = newJob;
+	newJob->next = NULL;
+	newJob->status = status;
 }
 
+
 /* delete a job from bg process list */
-static int delfromBgList(pid_t pid)
+static int delfromjobs(pid_t pid)
 {
-	bgjobL* curr = bgjobs; 
-	bgjobL* prev = NULL;
+	joblist* curr = jobs; 
+	joblist* prev = jobs;
 	while ((!(curr->pid==pid)) && (curr!=NULL))  {
 		prev = curr;
 		curr = curr->next;
@@ -329,7 +346,7 @@ static int delfromBgList(pid_t pid)
 
        /* return pid given jid from bg list */
 static pid_t jid2pid(int jid) {
-	bgjobL* curr = bgjobs;
+	joblist *curr = jobs;
 	while ((!(curr->jid == jid)) && (curr!=NULL)) {
 		curr = curr->next;
 	}
