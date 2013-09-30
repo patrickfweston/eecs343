@@ -33,8 +33,10 @@
   /************System include***********************************************/
 	#include <stdlib.h>
 	#include <signal.h>
-        #include <string.h>
+    #include <string.h>
 	#include <stdio.h>
+ 	#include <unistd.h>
+ 	#include <sys/types.h>
 
   /************Private include**********************************************/
 	#include "tsh.h"
@@ -53,6 +55,7 @@
 
   /************Global Variables*********************************************/
 
+
   /************Function Prototypes******************************************/
 	/* handles SIGINT and SIGSTOP signals */	
 	static void sig(int);
@@ -68,7 +71,9 @@ int main (int argc, char *argv[])
 	
 	/* shell initialization */
 	if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
-	if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
+	if (signal(SIGTSTP, sig) == SIG_ERR) {
+		PrintPError("SIGTSTP");
+	}
 
 	while (!forceExit) /* repeat forever */
 	{
@@ -78,21 +83,21 @@ int main (int argc, char *argv[])
 		/* read command line */
 		getCommandLine(&cmdLine, BUFSIZE);
 	
-	/* exit upon eof condition */
-	if (feof(stdin)) 
-	{
-	  forceExit=TRUE;
-          continue;
-	}
-	
-        if(strcmp(cmdLine, "exit") == 0)
-        {
-          forceExit=TRUE;
-          continue;
-        }
+		/* exit upon eof condition */
+		if (feof(stdin)) 
+		{
+			forceExit=TRUE;
+	    	continue;
+		}
+		
+	    if(strcmp(cmdLine, "exit") == 0)
+	    {
+	    	forceExit=TRUE;
+	    	continue;
+	    }
 
-	/* print commandline to standard output */
-	/* printf("%s", cmdLine); */
+		/* print commandline to standard output */
+		/* printf("%s", cmdLine); */
 
 		/* checks the status of background jobs */
 		CheckJobs();
@@ -100,7 +105,6 @@ int main (int argc, char *argv[])
 		/* interpret command and line
 		 * includes executing of commands */
 		Interpret(cmdLine);
-
 	}
 
 	/* shell termination */
@@ -110,8 +114,32 @@ int main (int argc, char *argv[])
 
 static void sig(int signo)
 {
-   if (signo==SIGTSTP) {
-	kill(-getpid(), SIGTSTP);
+   if (signo == SIGTSTP) {
+	  joblist *temp = jobs;
+	  printf("\n");
+	  while (temp != NULL) {
+	  	if(temp->status == FG) {
+	  		kill(-(temp->pid), SIGTSTP);
+	  		temp->status = BG;
+	  		temp->state = "Stopped";
+	  		printf("PID: %d stopped\n", temp->pid);
+	  	}
+	  	temp = temp->next;
+	  }
+   }
+
+   if (signo == SIGINT) {
+	  joblist *temp = jobs;
+	  printf("\n");
+	  while (temp != NULL) {
+	  	if(temp->status == FG) {
+	  		kill(-(temp->pid), SIGINT);
+	  		temp->status = ST;
+	  		temp->state = "Stopped";
+	  		printf("PID: %d stopped\n", temp->pid);
+	  	}
+	  	temp = temp->next;
+	  }
    }
 }
 

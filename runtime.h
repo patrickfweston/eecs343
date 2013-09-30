@@ -53,6 +53,10 @@
 		#define VAREXTERN(x, y) extern x;
 	#endif
 
+    #define FG 0
+	#define BG 1
+	#define ST 2
+
 	typedef struct command_t
 	{
       char* name;
@@ -72,6 +76,18 @@
 	 *    Purpose: Signals that a program exit is required
 	 ***********************************************************************/
 	VAREXTERN(bool forceExit, FALSE);
+
+	struct job_l {
+		int jid;
+		int status; /*fg or bg */
+                char* command;
+                char current;
+                char* state;
+		pid_t pid;
+		struct job_l* next;
+	};
+	typedef struct job_l joblist;
+	joblist *jobs;
 	
   /************Function Prototypes******************************************/
 	

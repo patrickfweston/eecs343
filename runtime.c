@@ -33,9 +33,6 @@
  *
  ***************************************************************************/
 	#define __RUNTIME_IMPL__
-	#define FG 0
-	#define BG 1
-	#define ST 2
 
   /************System include***********************************************/
 	#include <assert.h>
@@ -65,18 +62,7 @@
 
 	#define NBUILTINCOMMANDS (sizeof BuiltInCommands / sizeof(char*))
 
-	typedef struct job_l {
-		int jid;
-		int status; /*fg or bg */
-                char* command;
-                char current;
-                char* state;
-		pid_t pid;
-		struct job_l* next;
-	} joblist;
-
-	/* the pids of the background processes */
-	joblist *jobs = NULL;
+  joblist *jobs = NULL;
 
   /************Function Prototypes******************************************/
 	/* run command */
@@ -214,20 +200,24 @@ static bool ResolveExternalCmd(commandT* cmd)
 		pid_t pid;
 		if (forceFork) {
 		   if ((pid=fork())==0) {
-			execv(cmd->name, cmd->argv);
+        setpgid(0, 0);
+			  execv(cmd->name, cmd->argv);
 		   	exit(0);
 		   } else {
 		   	/*parent waits for foreground job to terminate*/
 			if (!cmd->bg) {
 				addtojobs(pid, cmd->cmdline, FG);
 				int status;
-				waitpid(pid,&status,0);
+        // Wait only if the process hasn't been stopped. If it has
+        // been stopped, don't continue to wait. (Gives access back)
+        // to ./tsh
+				waitpid(pid,&status, WUNTRACED);
 		   	} else {
 	 			addtojobs(pid, cmd->cmdline, BG);
 			}
 		   }
 		} else {
-		        execv(cmd->name, cmd->argv);
+        execv(cmd->name, cmd->argv);
 		}	
 		
 		/*
@@ -253,25 +243,29 @@ static bool ResolveExternalCmd(commandT* cmd)
    
 	static void RunBuiltInCmd(commandT* cmd)
 	{
-    		if (!strcmp(cmd->argv[0],"fg")) {
-			if ((cmd->argv[1]==NULL) && (jobs !=NULL)) {
-				tofg(jobs->pid);
-				waitpid(jobs->pid, &status, 0);
-			} else {
-				tofg(atoi(cmd->argv[1]));
-				waitpid(jid2pid(atoi(cmd->argv[1])),&status,0);
-			}
+      if (!strcmp(cmd->argv[0],"fg")) {
+  			if ((cmd->argv[1]==NULL) && (jobs !=NULL)) {
+          // Restart the process if it has been stopped
+          kill(-jobs->pid, SIGCONT);
+  				tofg(jobs->pid);
+  				waitpid(jobs->pid, &status, 0);
+  			} else {
+          // Restart the process if it has been stopped
+          kill(-jid2pid(atoi(cmd->argv[1])), SIGCONT);
+  				tofg(atoi(cmd->argv[1]));
+  				waitpid(jid2pid(atoi(cmd->argv[1])),&status,0);
+  			}
    		}			 
-    		if (!strcmp(cmd->argv[0],"bg")) {
-			if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
-				kill(jobs->pid, SIGCONT);
-			} else {
-				kill(jid2pid(atoi(cmd->argv[1])), SIGCONT);
-			}
+    	if (!strcmp(cmd->argv[0],"bg")) {
+  			if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
+  				kill(jobs->pid, SIGCONT);
+  			} else {
+  				kill(jid2pid(atoi(cmd->argv[1])), SIGCONT);
+  			}
  		} 			
-    		if (!strcmp(cmd->argv[0],"jobs")) {
-      			printjobs();
-    		}
+  		if (!strcmp(cmd->argv[0],"jobs")) {
+  			printjobs();
+  		}
 	}
 
   static void printjobs() {
