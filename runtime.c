@@ -200,6 +200,7 @@ static bool ResolveExternalCmd(commandT* cmd)
 		pid_t pid;
 		if (forceFork) {
 		   if ((pid=fork())==0) {
+        // From the handout's hints section...not really sure what it does
         setpgid(0, 0);
 			  execv(cmd->name, cmd->argv);
 		   	exit(0);
@@ -209,8 +210,8 @@ static bool ResolveExternalCmd(commandT* cmd)
 				addtojobs(pid, cmd->cmdline, FG);
 				int status;
         // Wait only if the process hasn't been stopped. If it has
-        // been stopped, don't continue to wait. (Gives access back)
-        // to ./tsh
+        // been stopped, don't continue to wait. (Gives access back
+        // to ./tsh)
 				waitpid(pid,&status, WUNTRACED);
 		   	} else {
 	 			addtojobs(pid, cmd->cmdline, BG);
@@ -229,8 +230,8 @@ static bool ResolveExternalCmd(commandT* cmd)
 		*/
 	}
 
-        static bool IsBuiltIn(char* cmd)
-        {
+  static bool IsBuiltIn(char* cmd)
+  {
 		if (!strcmp(cmd,"fg")) 
 			return TRUE;
 		if (!strcmp(cmd,"bg"))
@@ -238,7 +239,7 @@ static bool ResolveExternalCmd(commandT* cmd)
 		if (!strcmp(cmd,"jobs"))
 			return TRUE;	
 		return FALSE;     
-        }
+  }
 
    
 	static void RunBuiltInCmd(commandT* cmd)

@@ -77,6 +77,9 @@
 	 ***********************************************************************/
 	VAREXTERN(bool forceExit, FALSE);
 
+	// Moved the job list definition here to create it as a global variable.
+	// We need it later in tsh.c to determine which process to kill, which to
+	// stop, and to update the process's state accordingly.
 	struct job_l {
 		int jid;
 		int status; /*fg or bg */

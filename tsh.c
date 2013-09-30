@@ -114,11 +114,14 @@ int main (int argc, char *argv[])
 
 static void sig(int signo)
 {
-   if (signo == SIGTSTP) {
+	// If the user presses CTRL-Z
+	if (signo == SIGTSTP) {
 	  joblist *temp = jobs;
 	  printf("\n");
+	  // Find the foreground job and stop it
 	  while (temp != NULL) {
 	  	if(temp->status == FG) {
+	  		// Sends the stop signal to the job
 	  		kill(-(temp->pid), SIGTSTP);
 	  		temp->status = BG;
 	  		temp->state = "Stopped";
@@ -126,13 +129,16 @@ static void sig(int signo)
 	  	}
 	  	temp = temp->next;
 	  }
-   }
+	}
 
-   if (signo == SIGINT) {
+	// If the user presses CTRL-C
+	if (signo == SIGINT) {
 	  joblist *temp = jobs;
 	  printf("\n");
 	  while (temp != NULL) {
+	  	// Find the foreground job and kill it
 	  	if(temp->status == FG) {
+	  		// Kill using SIGINT
 	  		kill(-(temp->pid), SIGINT);
 	  		temp->status = ST;
 	  		temp->state = "Stopped";
@@ -140,6 +146,6 @@ static void sig(int signo)
 	  	}
 	  	temp = temp->next;
 	  }
-   }
+	}
 }
 
