@@ -2,3 +2,5 @@
 tsh
 test_type
 *.gz
+.nfs*
+
