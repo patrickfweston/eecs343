@@ -192,6 +192,8 @@
 	 *    Output: void 
 	 ***********************************************************************/
 	EXTERN void CheckJobs();
+
+	EXTERN int delfromjobs(pid_t);
 	
   /************External Declaration*****************************************/
 

@@ -122,13 +122,20 @@ static void sig(int signo)
       while (temp != NULL) {
           // Find the foreground job and kill it
           if (temp->status == FG) {
-              // Kill using the signo
-              kill(-(temp->pid), signo);
-              temp->status = ST;
-              temp->state = "Stopped";
-              printf("PID: %d stopped\n", temp->pid);
+            // Kill using the signo
+            kill(temp->pid, signo);
+            if(signo == SIGINT) {
+              	delfromjobs(temp->pid);
+            }
+            temp->state = "Stopped";
+            temp->status = ST;
+    	  	printf("PID: %d stopped\n", temp->pid);
+    	  	break;
           }
           temp = temp->next;
+      }
+      if (temp == NULL) {
+      	exit(0);
       }
     }
 }

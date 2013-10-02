@@ -82,11 +82,12 @@
 	/* adds the new job to background job list */ 
 	static void addtojobs(pid_t pid, char* cmdline, int status);
 	/* delete the job from background job list */
-	static int delfromjobs(pid_t pid);
+	int delfromjobs(pid_t pid);
 	/* return pid from jid */
 	static pid_t jid2pid(int jid);
 	/* change status from BG to FG*/
-	static void tofg(int jid);
+	pid_t tofg(int jid);
+  pid_t tofg_mostrecent(joblist *jobs);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -245,16 +246,22 @@ static bool ResolveExternalCmd(commandT* cmd)
 	static void RunBuiltInCmd(commandT* cmd)
 	{
       if (!strcmp(cmd->argv[0],"fg")) {
+        // No number passed
   			if ((cmd->argv[1]==NULL) && (jobs !=NULL)) {
           // Restart the process if it has been stopped
-          kill(-jobs->pid, SIGCONT);
-  				tofg(jobs->pid);
-  				waitpid(jobs->pid, &status, 0);
+  				pid_t temp_pid = tofg_mostrecent(jobs);
+          if(temp_pid != (pid_t)-1) {
+            kill(-temp_pid, SIGCONT);
+  				  waitpid(temp_pid, &status, WUNTRACED);
+          }
+        // Job number passed
   			} else {
           // Restart the process if it has been stopped
-          kill(-jid2pid(atoi(cmd->argv[1])), SIGCONT);
-  				tofg(atoi(cmd->argv[1]));
-  				waitpid(jid2pid(atoi(cmd->argv[1])),&status,0);
+  				pid_t temp_pid = tofg(atoi(cmd->argv[1]));
+          if(temp_pid != (pid_t)-1) {
+            kill(-temp_pid, SIGCONT);
+  				  waitpid(temp_pid, &status, WUNTRACED);
+          }
   			}
    		}			 
     	if (!strcmp(cmd->argv[0],"bg")) {
@@ -263,7 +270,7 @@ static bool ResolveExternalCmd(commandT* cmd)
   			} else {
   				kill(jid2pid(atoi(cmd->argv[1])), SIGCONT);
   			}
- 		} 			
+ 		  } 			
   		if (!strcmp(cmd->argv[0],"jobs")) {
   			printjobs();
   		}
@@ -272,7 +279,8 @@ static bool ResolveExternalCmd(commandT* cmd)
   static void printjobs() {
     joblist *temp = jobs;
     while(temp != NULL) {
-      printf("[%d] %c %s %s\n", temp->jid, temp->current, temp->state, temp->command);
+      //printf("[%d] %c %s %s\n", temp->jid, temp->current, temp->state, temp->command);
+      printf("[%d] %s %s\n", temp->jid, temp->state, temp->command);
       temp = temp->next;
     }
   }
@@ -355,20 +363,28 @@ static void addtojobs(pid_t pid, char* cmdline, int status)
 
 
 /* delete a job from bg process list */
-static int delfromjobs(pid_t pid)
+int delfromjobs(pid_t pid)
 {
-	joblist* curr = jobs; 
-	joblist* prev = jobs;
-	while ((!(curr->pid==pid)) && (curr!=NULL))  {
-		prev = curr;
-		curr = curr->next;
-	}	
-	if (curr==NULL) return 1; //pid not found from the list
-	
-	/* remove the job from the list */
-	prev->next = curr->next; 
-	free(curr);
-	return 0; //deletion completed successfully
+  joblist* prev = NULL;
+  joblist* curr = jobs;
+
+  while(curr != NULL) {
+    if (curr->pid == pid) {
+      if (prev == NULL) {
+        jobs = curr->next;
+        break;
+      }
+      else {
+        prev->next = curr->next;
+        curr = curr->next;
+      }
+    }
+    else {
+      prev = curr;
+      curr = curr->next;
+    }
+  }
+  return 0;
 }
 
        /* return pid given jid from bg list */
@@ -381,12 +397,35 @@ static pid_t jid2pid(int jid) {
 	return curr->pid;
 }	
 
-static void tofg(int jid)
-{
+pid_t tofg(int jid)
+{ 
 	joblist *curr = jobs;
-	while ((!(curr->jid == jid)) && (curr!=NULL)) {
+	while ((curr->jid != jid) && (curr != NULL)) {
 		curr = curr->next;
 	}
-	if (curr==NULL) printf("error: cannot find job \n");
-	else curr->status = FG;
+	if (curr==NULL) {
+    printf("error: cannot find job \n");
+    return (pid_t)-1;
+  }
+	else {
+    curr->status = FG;
+  }
+  return curr->pid;
+}
+
+pid_t tofg_mostrecent(joblist *jobs) {
+  joblist *curr = jobs;
+  /*while ((curr->current != '+') && (curr != NULL)) {
+    curr = curr->next;
+  }*/
+  while (curr->next != NULL) {
+    curr = curr->next;
+  }
+  if (curr == NULL) {
+    printf("No jobs to bring to foreground");
+    return (pid_t)-1;
+  } else {
+    curr->status = FG;
+  }
+  return curr->pid;
 }
