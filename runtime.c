@@ -87,10 +87,10 @@
 	static pid_t jid2pid(int jid);
 	/* change status from BG to FG*/
 	pid_t tofg(int jid);
-  pid_t tofg_mostrecent(joblist *jobs);
-  /* change status from BG to FG*/
-  pid_t tobg(int jid);
-  pid_t tobg_mostrecent(joblist *jobs);
+        pid_t tofg_mostrecent(joblist *jobs);
+        /* change status from BG to FG*/
+        pid_t tobg(int jid);
+        pid_t tobg_mostrecent(joblist *jobs);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -105,7 +105,7 @@
       		else {
         		RunCmdPipe(cmd[0], cmd[1]);
         		for(i = 0; i < n; i++)
-         		ReleaseCmdT(&cmd[i]);
+         		   ReleaseCmdT(&cmd[i]);
       		}
 	}
 	
@@ -130,6 +130,21 @@
 
 	void RunCmdPipe(commandT* cmd1, commandT* cmd2)
 	{
+            //cmd1's stdout becomes cmd2's stdin
+            //RunCmdFork(cmd1, TRUE);
+            FILE *output;
+            output = popen (cmd1->name, "r");
+            if (!output)
+            {
+                fprintf(stderr, "Could not run command");
+            }
+            else
+            {
+                char buffer[1024];
+                sprintf(buffer, "%s", output);
+                execv(cmd2->name, output);
+                pclose(output); 
+            }
 	}
 
 	void RunCmdRedirOut(commandT* cmd, char* file)
@@ -204,21 +219,21 @@ static bool ResolveExternalCmd(commandT* cmd)
 		pid_t pid;
 		if (forceFork) {
 		   if ((pid=fork())==0) {
-        // From the handout's hints section...not really sure what it does
-        setpgid(0, 0);
-			  execv(cmd->name, cmd->argv);
+                        // From the handout's hints section...not really sure what it does
+                        setpgid(0, 0);
+			execv(cmd->name, cmd->argv);
 		   	exit(0);
 		   } else {
 		   	/*parent waits for foreground job to terminate*/
 			if (!cmd->bg) {
-				addtojobs(pid, cmd->cmdline, FG);
-				int status;
-        // Wait only if the process hasn't been stopped. If it has
-        // been stopped, don't continue to wait. (Gives access back
-        // to ./tsh)
-				waitpid(pid,&status, WUNTRACED);
+			    addtojobs(pid, cmd->cmdline, FG);
+		            int status;
+                            // Wait only if the process hasn't been stopped. If it has
+                            // been stopped, don't continue to wait. (Gives access back
+                            // to ./tsh)
+		            waitpid(pid,&status, WUNTRACED);
 		   	} else {
-	 			addtojobs(pid, cmd->cmdline, BG);
+	 		    addtojobs(pid, cmd->cmdline, BG);
 			}
 		   }
 		} else {
@@ -248,55 +263,55 @@ static bool ResolveExternalCmd(commandT* cmd)
    
 	static void RunBuiltInCmd(commandT* cmd)
 	{
-      if (!strcmp(cmd->argv[0],"fg")) {
-        // No number passed
-  			if ((cmd->argv[1]==NULL) && (jobs !=NULL)) {
-          // Restart the process if it has been stopped
-  				pid_t temp_pid = tofg_mostrecent(jobs);
-          if(temp_pid != (pid_t)-1) {
-            kill(-temp_pid, SIGCONT);
-  				  waitpid(temp_pid, &status, WUNTRACED);
-          }
-        // Job number passed
-  			} else if(cmd->argv[1] != NULL) {
-          // Restart the process if it has been stopped
-  				pid_t temp_pid = tofg(atoi(cmd->argv[1]));
-          if(temp_pid != (pid_t)-1) {
-            kill(-temp_pid, SIGCONT);
-  				  waitpid(temp_pid, &status, WUNTRACED);
-          }
-  			}
-   		}			 
-    	if (!strcmp(cmd->argv[0],"bg")) {
-  			if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
-          pid_t temp_pid = tobg_mostrecent(jobs);
-          if(temp_pid != (pid_t)-1) {
-    				kill(temp_pid, SIGCONT);
-          }
-  			} else if(cmd->argv[1] != NULL) {
-          pid_t temp_pid = tobg(atoi(cmd->argv[1]));
-  				if(temp_pid != (pid_t)-1) {
-            kill(temp_pid, SIGCONT);
-          }
-  			}
- 		  } 			
-  		if (!strcmp(cmd->argv[0],"jobs")) {
-  			printjobs();
+            if (!strcmp(cmd->argv[0],"fg")) {
+                // No number passed
+  	        if ((cmd->argv[1]==NULL) && (jobs !=NULL)) {
+                    // Restart the process if it has been stopped
+                    pid_t temp_pid = tofg_mostrecent(jobs);
+                    if(temp_pid != (pid_t)-1) {
+                        kill(-temp_pid, SIGCONT);
+  		        waitpid(temp_pid, &status, WUNTRACED);
+                    }
+                // Job number passed
+  	        } else if(cmd->argv[1] != NULL) {
+                    // Restart the process if it has been stopped
+                    pid_t temp_pid = tofg(atoi(cmd->argv[1]));
+                    if(temp_pid != (pid_t)-1) {
+                        kill(-temp_pid, SIGCONT);
+                        waitpid(temp_pid, &status, WUNTRACED);
+                    }
   		}
+   	    }			 
+    	    if (!strcmp(cmd->argv[0],"bg")) {
+                if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
+                    pid_t temp_pid = tobg_mostrecent(jobs);
+                    if(temp_pid != (pid_t)-1) {
+    		        kill(temp_pid, SIGCONT);
+                    }
+                } else if(cmd->argv[1] != NULL) {
+                    pid_t temp_pid = tobg(atoi(cmd->argv[1]));
+                    if(temp_pid != (pid_t)-1) {
+                        kill(temp_pid, SIGCONT);
+                    }
+  	        }
+            }			
+            if (!strcmp(cmd->argv[0],"jobs")) {
+  		printjobs();
+  	    }
 	}
 
-  static void printjobs() {
-    joblist *temp = jobs;
-    while(temp != NULL) {
-      //printf("[%d] %c %s %s\n", temp->jid, temp->current, temp->state, temp->command);
-      printf("[%d] %s %s\n", temp->jid, temp->state, temp->command);
-      temp = temp->next;
-    }
+static void printjobs() {
+  joblist *temp = jobs;
+  while(temp != NULL) {
+    //printf("[%d] %c %s %s\n", temp->jid, temp->current, temp->state, temp->command);
+    printf("[%d] %s %s\n", temp->jid, temp->state, temp->command);
+    temp = temp->next;
   }
+}
 
-        void CheckJobs()
-	{
- 	}
+void CheckJobs()
+{
+}
 
 
 commandT* CreateCmdT(int n)
@@ -451,6 +466,7 @@ pid_t tobg(int jid)
   }
   else {
     curr->status = BG;
+    curr->state = "Running";
   }
   return curr->pid;
 }
@@ -468,6 +484,7 @@ pid_t tobg_mostrecent(joblist *jobs) {
     return (pid_t)-1;
   } else {
     curr->status = BG;
+    curr->state = "Running";
   }
   return curr->pid;
 }

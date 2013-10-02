@@ -129,8 +129,8 @@ static void sig(int signo)
             }
             temp->state = "Stopped";
             temp->status = ST;
-    	  	printf("PID: %d stopped\n", temp->pid);
-    	  	break;
+    	    printf("PID: %d stopped\n", temp->pid);
+    	    break;
           }
           temp = temp->next;
       }
