@@ -130,6 +130,7 @@
 
 	void RunCmdPipe(commandT* cmd1, commandT* cmd2)
 	{
+            /*
             //cmd1's stdout becomes cmd2's stdin
             //RunCmdFork(cmd1, TRUE);
             FILE *output;
@@ -145,6 +146,7 @@
                 execv(cmd2->name, output);
                 pclose(output); 
             }
+            */
 	}
 
 	void RunCmdRedirOut(commandT* cmd, char* file)
