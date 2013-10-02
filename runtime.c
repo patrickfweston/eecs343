@@ -435,6 +435,7 @@ static pid_t jid2pid(int jid) {
 }	
 */
 
+/* find jobs for fg command */
 pid_t tofg(int jid)
 { 
 	joblist *curr = jobs;
@@ -470,6 +471,7 @@ pid_t tofg_mostrecent(joblist *jobs)
 }
 
 
+/* wait for foreground job to complete */
 void waitfg(pid_t pid) 
 {
     joblist * fgjob;
@@ -483,6 +485,7 @@ void waitfg(pid_t pid)
     }
 }
 
+/* return a pointer to the job based on pid */
 joblist* findjob(pid_t pid)
 {
 	joblist *curr = jobs;
@@ -492,6 +495,8 @@ joblist* findjob(pid_t pid)
 	return curr;
 }
 
+
+/* find jobs for bg command */
 pid_t tobg(int jid)
 { 
   joblist *curr = jobs;
