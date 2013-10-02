@@ -83,8 +83,6 @@
 	static void addtojobs(pid_t pid, char* cmdline, int status);
 	/* delete the job from background job list */
 	int delfromjobs(pid_t pid);
-	/* return pid from jid */
-	static pid_t jid2pid(int jid);
 	/* change status from BG to FG*/
 	pid_t tofg(int jid);
   	pid_t tofg_mostrecent(joblist *jobs);
@@ -94,6 +92,9 @@
   	/* change status from BG to FG*/
   	pid_t tobg(int jid);
   	pid_t tobg_mostrecent(joblist *jobs);
+        /* change status from BG to FG*/
+        pid_t tobg(int jid);
+        pid_t tobg_mostrecent(joblist *jobs);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -109,7 +110,7 @@
       		else {
         		RunCmdPipe(cmd[0], cmd[1]);
         		for(i = 0; i < n; i++)
-         		ReleaseCmdT(&cmd[i]);
+         		   ReleaseCmdT(&cmd[i]);
       		}
 	}
 	
@@ -134,6 +135,23 @@
 
 	void RunCmdPipe(commandT* cmd1, commandT* cmd2)
 	{
+            /*
+            //cmd1's stdout becomes cmd2's stdin
+            //RunCmdFork(cmd1, TRUE);
+            FILE *output;
+            output = popen (cmd1->name, "r");
+            if (!output)
+            {
+                fprintf(stderr, "Could not run command");
+            }
+            else
+            {
+                char buffer[1024];
+                sprintf(buffer, "%s", output);
+                execv(cmd2->name, output);
+                pclose(output); 
+            }
+            */
 	}
 
 	void RunCmdRedirOut(commandT* cmd, char* file)
@@ -304,10 +322,9 @@ static void printjobs() {
     	}
 }
 
-        void CheckJobs()	
-	{
- 	}
-
+void CheckJobs()	
+{
+}
 
 commandT* CreateCmdT(int n)
 {
@@ -406,7 +423,8 @@ int delfromjobs(pid_t pid)
   return 0;
 }
 
-       /* return pid given jid from bg list */
+/* return pid given jid from bg list */
+/*
 static pid_t jid2pid(int jid) {
 	joblist *curr = jobs;
 	while ((!(curr->jid == jid)) && (curr!=NULL)) {
@@ -415,6 +433,7 @@ static pid_t jid2pid(int jid) {
 	if (curr==NULL) return (pid_t)0; //pid not found
 	return curr->pid;
 }	
+*/
 
 pid_t tofg(int jid)
 { 
@@ -485,6 +504,7 @@ pid_t tobg(int jid)
   }
   else {
     curr->status = BG;
+    curr->state = "Running";
   }
   return curr->pid;
 }
@@ -502,7 +522,7 @@ pid_t tobg_mostrecent(joblist *jobs) {
     return (pid_t)-1;
   } else {
     curr->status = BG;
+    curr->state = "Running";
   }
   return curr->pid;
 }
-
