@@ -33,11 +33,12 @@
   /************System include***********************************************/
 	#include <stdlib.h>
 	#include <signal.h>
-    #include <string.h>
+    	#include <string.h>
 	#include <stdio.h>
  	#include <unistd.h>
  	#include <sys/types.h>
-
+	#include <sys/wait.h>
+	#include <errno.h>
   /************Private include**********************************************/
 	#include "tsh.h"
 	#include "io.h"
@@ -59,7 +60,7 @@
   /************Function Prototypes******************************************/
 	/* handles SIGINT and SIGSTOP signals */	
 	static void sig(int);
-
+	static void sigchld_handler(int);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -71,10 +72,9 @@ int main (int argc, char *argv[])
 	
 	/* shell initialization */
 	if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
-	if (signal(SIGTSTP, sig) == SIG_ERR) {
-		PrintPError("SIGTSTP");
-	}
-
+	if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
+	if (signal(SIGCHLD, sigchld_handler) == SIG_ERR) PrintPError("SIGCHLD");
+	
 	while (!forceExit) /* repeat forever */
 	{
 		/* print prompt */
@@ -123,20 +123,46 @@ static void sig(int signo)
           // Find the foreground job and kill it
           if (temp->status == FG) {
             // Kill using the signo
-            kill(temp->pid, signo);
-            if(signo == SIGINT) {
+            kill(-temp->pid, signo);
+            
+	    /* not quite necessary as we delete the job in chld handler 
+	    if(signo == SIGINT) {
               	delfromjobs(temp->pid);
-            }
+            }i
+	    */
             temp->state = "Stopped";
             temp->status = ST;
-    	  	printf("PID: %d stopped\n", temp->pid);
-    	  	break;
+	    if (signo == SIGTSTP) {
+    	  	printf("[%d][%d] stopped by Ctrl-Z \n", temp->jid, temp->pid);
+    	    } else {
+		printf("[%d][%d] interrupted by Ctrl-Z \n",temp->jid, temp->pid);
+	    }
+		break;
           }
           temp = temp->next;
-      }
+      } 
       if (temp == NULL) {
-      	exit(0);
+      	  exit(0);
       }
     }
 }
 
+/* child handler */
+static void sigchld_handler(int signo) 
+{
+	pid_t pid;
+	int status;
+	if ((pid = waitpid(-1, &status, WNOHANG)) > 0) 
+	{
+		/* change the status of the job so that waitfg can stop*/
+        	joblist* fgjob = findjob(pid);
+		fgjob->status = ST;
+		sleep(0);
+		/* delete from job list */
+                /* printf("pid:[%d] %s \n",fgjob->pid,fgjob->state); */
+        	delfromjobs(pid);
+	} else {	
+		/* print error message */
+		printf("%s \n", strerror(errno));
+	}
+}

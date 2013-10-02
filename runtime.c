@@ -87,11 +87,14 @@
 	static pid_t jid2pid(int jid);
 	/* change status from BG to FG*/
 	pid_t tofg(int jid);
-  pid_t tofg_mostrecent(joblist *jobs);
+  	pid_t tofg_mostrecent(joblist *jobs);
+	void waitfg(pid_t pid);
+	joblist* findjob(pid_t pid); 
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
         int total_task;
+	sigset_t mask;
 	int status;
 	void RunCmd(commandT** cmd, int n)
 	{
@@ -199,36 +202,40 @@ static bool ResolveExternalCmd(commandT* cmd)
 	static void Exec(commandT* cmd, bool forceFork)
 	{
 		pid_t pid;
+		sigset_t mask;
 		if (forceFork) {
-		   if ((pid=fork())==0) {
-        // From the handout's hints section...not really sure what it does
-        setpgid(0, 0);
+			sigemptyset(&mask);
+                	sigaddset(&mask,SIGCHLD);
+                	sigprocmask(SIG_BLOCK, &mask, NULL);
+		   
+		 	/* child process */ 
+ 			if ((pid=fork())==0) {
+                          // From the handout's hints section...not really sure what it does
+        		  setpgid(0, 0);
+			  sigprocmask(SIG_UNBLOCK, &mask, NULL);
 			  execv(cmd->name, cmd->argv);
-		   	exit(0);
+		   	  exit(0);
 		   } else {
 		   	/*parent waits for foreground job to terminate*/
 			if (!cmd->bg) {
 				addtojobs(pid, cmd->cmdline, FG);
-				int status;
-        // Wait only if the process hasn't been stopped. If it has
-        // been stopped, don't continue to wait. (Gives access back
-        // to ./tsh)
-				waitpid(pid,&status, WUNTRACED);
+				sigprocmask(SIG_UNBLOCK, &mask, NULL);
+				//int status;
+        			
+				/*
+				 Wait only if the process hasn't been stopped. If it has
+        			 been stopped, don't continue to wait. (Gives access back
+        			 to ./tsh)
+				*/			
+				waitfg(pid);
 		   	} else {
 	 			addtojobs(pid, cmd->cmdline, BG);
+				sigprocmask(SIG_UNBLOCK, &mask, NULL);
 			}
 		   }
 		} else {
-        execv(cmd->name, cmd->argv);
+        		execv(cmd->name, cmd->argv);
 		}	
-		
-		/*
-		 parent waits for foreground job
-		if (!cmd->bg) {
-			int status;
-			waitpid(pid, &status, 0);	
-		}
-		*/
 	}
 
   static bool IsBuiltIn(char* cmd)
@@ -243,49 +250,51 @@ static bool ResolveExternalCmd(commandT* cmd)
   }
 
    
-	static void RunBuiltInCmd(commandT* cmd)
-	{
-      if (!strcmp(cmd->argv[0],"fg")) {
-        // No number passed
+ static void RunBuiltInCmd(commandT* cmd)
+ {
+      		if (!strcmp(cmd->argv[0],"fg")) {
+        		/* No number passed */
   			if ((cmd->argv[1]==NULL) && (jobs !=NULL)) {
-          // Restart the process if it has been stopped
+          		/* Restart the process if it has been stopped */
   				pid_t temp_pid = tofg_mostrecent(jobs);
-          if(temp_pid != (pid_t)-1) {
-            kill(-temp_pid, SIGCONT);
-  				  waitpid(temp_pid, &status, WUNTRACED);
-          }
-        // Job number passed
+          			if(temp_pid != (pid_t)-1) {
+            				kill(-temp_pid, SIGCONT);
+  					//waitpid(temp_pid, &status, WUNTRACED);
+  					waitfg(temp_pid);
+         		 	}
+        		/* Job number passed */
   			} else {
-          // Restart the process if it has been stopped
+          			/* Restart the process if it has been stopped */
   				pid_t temp_pid = tofg(atoi(cmd->argv[1]));
-          if(temp_pid != (pid_t)-1) {
-            kill(-temp_pid, SIGCONT);
-  				  waitpid(temp_pid, &status, WUNTRACED);
-          }
+          			if(temp_pid != (pid_t)-1) {
+            			kill(-temp_pid, SIGCONT);
+  				//waitpid(temp_pid, &status, WUNTRACED);
+  				waitfg(temp_pid);
+          			}
   			}
    		}			 
-    	if (!strcmp(cmd->argv[0],"bg")) {
+    		if (!strcmp(cmd->argv[0],"bg")) {
   			if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
   				kill(jobs->pid, SIGCONT);
   			} else {
   				kill(jid2pid(atoi(cmd->argv[1])), SIGCONT);
   			}
- 		  } 			
+ 		} 			
   		if (!strcmp(cmd->argv[0],"jobs")) {
   			printjobs();
   		}
-	}
+}
 
-  static void printjobs() {
-    joblist *temp = jobs;
-    while(temp != NULL) {
-      //printf("[%d] %c %s %s\n", temp->jid, temp->current, temp->state, temp->command);
-      printf("[%d] %s %s\n", temp->jid, temp->state, temp->command);
-      temp = temp->next;
-    }
-  }
+/* print all the jobs in the job list */
+static void printjobs() {
+	joblist *temp = jobs;
+	while(temp != NULL){
+      		printf("[%d][%d] %s %s\n", temp->jid,temp->pid, temp->state, temp->command);
+      		temp = temp->next;
+    	}
+}
 
-        void CheckJobs()
+        void CheckJobs()	
 	{
  	}
 
@@ -413,7 +422,8 @@ pid_t tofg(int jid)
   return curr->pid;
 }
 
-pid_t tofg_mostrecent(joblist *jobs) {
+pid_t tofg_mostrecent(joblist *jobs) 
+{
   joblist *curr = jobs;
   /*while ((curr->current != '+') && (curr != NULL)) {
     curr = curr->next;
@@ -422,10 +432,32 @@ pid_t tofg_mostrecent(joblist *jobs) {
     curr = curr->next;
   }
   if (curr == NULL) {
-    printf("No jobs to bring to foreground");
+    printf("No jobs to bring to foreground\n");
     return (pid_t)-1;
   } else {
     curr->status = FG;
   }
   return curr->pid;
+}
+
+void waitfg(pid_t pid) 
+{
+    joblist * fgjob;
+    fgjob = findjob(pid);
+    if (fgjob != NULL) {
+    	while (fgjob->status == FG) {
+		sleep(0);
+		/* for debugging */
+		/* printf("waiting for fg to change status \n"); */
+    	}
+    }
+}
+
+joblist* findjob(pid_t pid)
+{
+	joblist *curr = jobs;
+	while ((curr->next !=NULL) && (curr->pid != pid)) {
+		curr = curr->next; 
+	}
+	return curr;
 }

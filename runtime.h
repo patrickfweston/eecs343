@@ -194,6 +194,7 @@
 	EXTERN void CheckJobs();
 
 	EXTERN int delfromjobs(pid_t);
+	EXTERN joblist* findjob(pid_t pid);
 	
   /************External Declaration*****************************************/
 
