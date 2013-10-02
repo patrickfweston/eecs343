@@ -135,7 +135,7 @@ static void sig(int signo)
 	    if (signo == SIGTSTP) {
     	  	printf("[%d][%d] stopped by Ctrl-Z \n", temp->jid, temp->pid);
     	    } else {
-		printf("[%d][%d] interrupted by Ctrl-Z \n",temp->jid, temp->pid);
+		printf("[%d][%d] interrupted by Ctrl-C \n",temp->jid, temp->pid);
 	    }
 		break;
           }
@@ -150,6 +150,7 @@ static void sig(int signo)
 /* child handler */
 static void sigchld_handler(int signo) 
 {
+	errno = 0; /* clear errno */
 	pid_t pid;
 	int status;
 	if ((pid = waitpid(-1, &status, WNOHANG)) > 0) 
@@ -163,6 +164,8 @@ static void sigchld_handler(int signo)
         	delfromjobs(pid);
 	} else {	
 		/* print error message */
-		printf("%s \n", strerror(errno));
+		if (errno != 0) {
+			fprintf(stderr, "%s \n", strerror(errno));
+		}
 	}
 }
