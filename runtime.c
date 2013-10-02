@@ -88,6 +88,9 @@
 	/* change status from BG to FG*/
 	pid_t tofg(int jid);
   pid_t tofg_mostrecent(joblist *jobs);
+  /* change status from BG to FG*/
+  pid_t tobg(int jid);
+  pid_t tobg_mostrecent(joblist *jobs);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -255,7 +258,7 @@ static bool ResolveExternalCmd(commandT* cmd)
   				  waitpid(temp_pid, &status, WUNTRACED);
           }
         // Job number passed
-  			} else {
+  			} else if(cmd->argv[1] != NULL) {
           // Restart the process if it has been stopped
   				pid_t temp_pid = tofg(atoi(cmd->argv[1]));
           if(temp_pid != (pid_t)-1) {
@@ -266,9 +269,15 @@ static bool ResolveExternalCmd(commandT* cmd)
    		}			 
     	if (!strcmp(cmd->argv[0],"bg")) {
   			if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
-  				kill(jobs->pid, SIGCONT);
-  			} else {
-  				kill(jid2pid(atoi(cmd->argv[1])), SIGCONT);
+          pid_t temp_pid = tobg_mostrecent(jobs);
+          if(temp_pid != (pid_t)-1) {
+    				kill(temp_pid, SIGCONT);
+          }
+  			} else if(cmd->argv[1] != NULL) {
+          pid_t temp_pid = tobg(atoi(cmd->argv[1]));
+  				if(temp_pid != (pid_t)-1) {
+            kill(temp_pid, SIGCONT);
+          }
   			}
  		  } 			
   		if (!strcmp(cmd->argv[0],"jobs")) {
@@ -426,6 +435,39 @@ pid_t tofg_mostrecent(joblist *jobs) {
     return (pid_t)-1;
   } else {
     curr->status = FG;
+  }
+  return curr->pid;
+}
+
+pid_t tobg(int jid)
+{ 
+  joblist *curr = jobs;
+  while ((curr->jid != jid) && (curr != NULL)) {
+    curr = curr->next;
+  }
+  if (curr==NULL) {
+    printf("error: cannot find job \n");
+    return (pid_t)-1;
+  }
+  else {
+    curr->status = BG;
+  }
+  return curr->pid;
+}
+
+pid_t tobg_mostrecent(joblist *jobs) {
+  joblist *curr = jobs;
+  /*while ((curr->current != '+') && (curr != NULL)) {
+    curr = curr->next;
+  }*/
+  while (curr->next != NULL) {
+    curr = curr->next;
+  }
+  if (curr == NULL) {
+    printf("No jobs to run in the background");
+    return (pid_t)-1;
+  } else {
+    curr->status = BG;
   }
   return curr->pid;
 }
