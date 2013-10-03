@@ -110,7 +110,11 @@
       		int i;
       		total_task = n;
       		if(n == 1)
-			RunCmdFork(cmd[0], TRUE);
+			if ((cmd[0]->is_redirect_in)||(cmd[0]->is_redirect_out)) {
+				RunCmdRedirInOut(cmd[0]);
+			}  else {
+				RunCmdFork(cmd[0], TRUE);
+			}
       		else {
         		RunCmdPipe(cmd[0], cmd[1]);
         		for(i = 0; i < n; i++)
@@ -158,13 +162,39 @@
             */
 	}
 
-	void RunCmdRedirOut(commandT* cmd, char* file)
-	{
+	void RunCmdRedirInOut(commandT* cmd)
+	{	
+		int save_stdout = dup(1); 
+		int save_stdin = dup(0);
+		if (cmd->is_redirect_out) {
+			int fid_out = open(cmd->redirect_out, O_RDWR | O_CREAT,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        		close(1);
+        		dup2(fid_out,1);
+        		close(fid_out);
+		}
+		if (cmd->is_redirect_in) {
+			 int fid_in = open(cmd->redirect_in, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+                	 close(0);
+                	 dup2(fid_in, 0);
+                	 close(fid_in);
+		}
+		RunExternalCmd(cmd, TRUE);
+		dup2(save_stdout, 1);
+		dup2(save_stdin, 0);
 	}
 
+/*---
 	void RunCmdRedirIn(commandT* cmd, char* file)
 	{
+		int save_stdin = dup(0);
+		int fid = open(file, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        	close(0);
+        	dup2(fid, 0);
+        	close(fid);
+		//RunExternalCmd(cmd, TRUE);
+		dup2(save_stdin, 0);
 	}
+--*/
 
 /*Try to run an external command*/
 static void RunExternalCmd(commandT* cmd, bool fork)
@@ -638,3 +668,21 @@ pid_t tobg_mostrecent(joblist *jobs) {
   }
   return curr->pid;
 }
+
+/*
+ redirect stdout 
+void redir_stdout(char* filename) {
+	fid = open(filename, O_WRONGLY | O_CREAT);
+	close(1);
+	dup2(fid,1);
+	close(fid);
+} 
+
+ redirect stdin 
+void redir_stdin(char* filename) {
+	fid = open(filename, O_RDONGLY);
+	close(0);
+	dup2(fid, 0);
+	close(fid);
+}
+*/	

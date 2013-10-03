@@ -136,7 +136,7 @@
 	 *    Input: a command structure structure and a file name
 	 *    Output: void
 	 ***********************************************************************/
-	EXTERN void RunCmdRedirOut(commandT*, char*);
+	EXTERN void RunCmdRedirInOut(commandT*);
 
 	/***********************************************************************
 	 *  Title: Runs two command with input redirection
@@ -145,7 +145,7 @@
 	 *    Input: a command structure structure and a file name
 	 *    Output: void
 	 ***********************************************************************/
-	EXTERN void RunCmdRedirIn(commandT*, char*);
+	//EXTERN void RunCmdRedirIn(commandT*, char*);
 
 	/***********************************************************************
 	 *  Title: Stop the foreground process
