@@ -116,7 +116,10 @@ int main (int argc, char *argv[])
                     {
                         if (!strcmp(temp->new_name, command))
                         {
-                            Interpret(temp->previous_name);
+                        	int len = strlen(temp->previous_name);
+                        	char* tempCmd = malloc(sizeof(char) * (size_t)len + 1);
+                        	strcpy(tempCmd, temp->previous_name);
+                        	Interpret(tempCmd);
                             foundAlias = TRUE;
                             break;
                         } 

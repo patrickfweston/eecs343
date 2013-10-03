@@ -112,7 +112,12 @@
       		if(n == 1)
 			RunCmdFork(cmd[0], TRUE);
       		else {
-        		RunCmdPipe(cmd[0], cmd[1]);
+            /* Loop runs once for each command */
+            for(i = 0; i < n; i++) {
+              printf("%s\n", cmd[i]->cmdline);
+              RunCmdFork(cmd[i], TRUE);
+              //RunCmdPipe(cmd[i], cmd[i+1]);
+            }
         		for(i = 0; i < n; i++)
          		   ReleaseCmdT(&cmd[i]);
       		}
@@ -317,9 +322,18 @@ static bool ResolveExternalCmd(commandT* cmd)
   		if (!strcmp(cmd->argv[0],"jobs")) {
   			printjobs();
   		}
-                if (!strcmp(cmd->argv[0],"alias")) {
-			changeAlias(cmd->cmdline);
-                }
+      if (!strcmp(cmd->argv[0],"alias")) {
+        if (cmd->argv[1]==NULL) {
+          aliaslist* curr=aliases;
+          while (curr != NULL) {
+            printf("alias %s='%s'\n" , curr->previous_name, curr->new_name);
+            curr=curr->next;
+          }
+        }
+        else {
+          changeAlias(cmd->cmdline);
+        }
+      }
 }
 
 /* print all the jobs in the job list */
@@ -332,7 +346,7 @@ static void printjobs() {
 }
 
 static void changeAlias(char *cmdline)
-{
+{ 
         /* the command 'alias' */
         /* the command to change to */
         char equal = '=';
@@ -482,7 +496,6 @@ static void addtoaliases(char* previous_name, char* new_name)
       }
       else
       {
-                
         aliaslist *newalias = (aliaslist*)malloc(sizeof(aliaslist));
         
         int prev_len = strlen(previous_name);
@@ -500,7 +513,7 @@ static void addtoaliases(char* previous_name, char* new_name)
         } else {
             prev->next = newalias;
         }
-        
+
       }
 }
 
