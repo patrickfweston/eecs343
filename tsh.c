@@ -61,6 +61,7 @@
 	/* handles SIGINT and SIGSTOP signals */	
 	static void sig(int);
 	static void sigchld_handler(int);
+	void killAllJobs(joblist*);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -92,6 +93,7 @@ int main (int argc, char *argv[])
 		
 	    if(strcmp(cmdLine, "exit") == 0)
 	    {
+	    	killAllJobs(jobs);
 	    	forceExit=TRUE;
 	    	continue;
 	    }
@@ -165,7 +167,9 @@ static void sig(int signo)
           temp = temp->next;
       } 
       if (temp == NULL) {
-      	  exit(0);
+		killAllJobs(jobs);
+		forceExit=TRUE;
+		exit(0);
       }
     }
 }
@@ -191,4 +195,12 @@ static void sigchld_handler(int signo)
 			fprintf(stderr, "%s \n", strerror(errno));
 		}
 	}
+}
+
+void killAllJobs(joblist* jobs) {
+	joblist* temp = jobs;
+	while (temp != NULL) {
+        kill(-temp->pid, SIGINT);
+		temp = temp->next;
+    }
 }
