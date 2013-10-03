@@ -91,6 +91,14 @@
 	};
 	typedef struct job_l joblist;
 	joblist *jobs;
+
+        struct alias_l {
+            char* previous_name;
+            char* new_name;
+            struct alias_l* next;
+        };
+        typedef struct alias_l aliaslist;
+        aliaslist *aliases;
 	
   /************Function Prototypes******************************************/
 	

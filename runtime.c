@@ -63,6 +63,7 @@
 	#define NBUILTINCOMMANDS (sizeof BuiltInCommands / sizeof(char*))
 
   joblist *jobs = NULL;
+  aliaslist *aliases = NULL;
 
   /************Function Prototypes******************************************/
 	/* run command */
@@ -79,10 +80,13 @@
 	static bool IsBuiltIn(char*);
   	/* prints the list of jobs */
   	static void printjobs();
+        static void changeAlias(char *cmdline);
 	/* adds the new job to background job list */ 
 	static void addtojobs(pid_t pid, char* cmdline, int status);
 	/* delete the job from background job list */
 	int delfromjobs(pid_t pid);
+
+        static void addtoaliases(char* previous_name, char* new_name);
 	/* change status from BG to FG*/
 	pid_t tofg(int jid);
   	pid_t tofg_mostrecent(joblist *jobs);
@@ -268,6 +272,8 @@ static bool ResolveExternalCmd(commandT* cmd)
 			return TRUE;
 		if (!strcmp(cmd,"jobs"))
 			return TRUE;	
+                if (!strcmp(cmd,"alias"))
+			return TRUE;
 		return FALSE;     
   }
 
@@ -311,6 +317,9 @@ static bool ResolveExternalCmd(commandT* cmd)
   		if (!strcmp(cmd->argv[0],"jobs")) {
   			printjobs();
   		}
+                if (!strcmp(cmd->argv[0],"alias")) {
+			changeAlias(cmd->cmdline);
+                }
 }
 
 /* print all the jobs in the job list */
@@ -320,6 +329,54 @@ static void printjobs() {
       		printf("[%d][%d] %s %s\n", temp->jid,temp->pid, temp->state, temp->command);
       		temp = temp->next;
     	}
+}
+
+static void changeAlias(char *cmdline)
+{
+        /* the command 'alias' */
+        char* command = malloc(5 * sizeof(char) + 1);
+        strncpy(command, cmdline, 5);
+	// printf("%s\n", command);
+     
+        /* the command to change to */
+        char equal = '=';
+        int howMany = 0; //how large the command is
+	char* letter = cmdline + 6; //start after the 'alias' command
+	while (letter != NULL) {
+            if (*letter == equal) {
+	        break;	
+            }
+            letter++;
+            howMany++;
+        }
+        char* command_to_change_to = malloc(howMany * sizeof(char) + 1);
+        strncpy(command_to_change_to, cmdline + 6, howMany);
+        //printf("command_to_change to: %s\n", command_to_change_to);
+        
+        /* the command to change */
+        char quote = '"';
+        int offset = howMany;
+        letter = cmdline + 6 + offset + 2; //after the commands and ="
+        howMany = 0;
+        while (letter != NULL) {
+            if (*letter == quote) {
+                break;
+            }
+            letter++;
+            howMany++;
+        }
+        char* command_to_change = malloc(howMany * sizeof(char) + 1);
+        strncpy(command_to_change, cmdline + 6 + offset + 2, howMany);
+        //printf("command_to_change: %s\n", command_to_change);
+       
+        addtoaliases(command_to_change, command_to_change_to);
+ 
+        //printf("previous_name: %s\n", aliases->previous_name);
+        //printf("new_name: %s\n", aliases->new_name);
+
+        free (command_to_change_to);
+        free (command_to_change);
+
 }
 
 void CheckJobs()	
@@ -395,6 +452,28 @@ static void addtojobs(pid_t pid, char* cmdline, int status)
         
 	newJob->next = NULL;
 	newJob->status = status;
+}
+
+static void addtoaliases(char* previous_name, char* new_name)
+{
+      /* add the new job to the of the list */
+      aliaslist *newalias = (aliaslist*)malloc(sizeof(aliaslist));
+      newalias->previous_name = previous_name;
+      newalias->new_name = new_name;
+
+      aliaslist* curr=aliases;
+      aliaslist* prev=aliases;
+      while (curr!=NULL) {
+        prev=curr;
+        curr=curr->next;
+      }
+
+      if (aliases==NULL) {
+         aliases=newalias;
+      } else {
+         prev->next = newalias;
+      }
+      newalias->next = NULL;
 }
 
 
