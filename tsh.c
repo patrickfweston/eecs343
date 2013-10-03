@@ -104,7 +104,30 @@ int main (int argc, char *argv[])
 		
 		/* interpret command and line
 		 * includes executing of commands */
-		Interpret(cmdLine);
+                if (aliases != NULL)
+                { 
+                    bool foundAlias = FALSE;
+                    aliaslist *temp = aliases;
+                    char* command = malloc(5 * sizeof(char) + 1);
+                    strncpy(command, cmdLine, 5);
+                    while (temp != NULL) 
+                    {
+                        if (!strcmp(temp->new_name, command))
+                        {
+                            Interpret(temp->previous_name);
+                            foundAlias = TRUE;
+                            break;
+                        } 
+                        temp = temp->next;   
+                    }
+                    
+                    if (!foundAlias)
+                        Interpret(cmdLine);
+                }
+                else
+                {
+		    Interpret(cmdLine);
+                }
 	}
 
 	/* shell termination */

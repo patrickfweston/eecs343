@@ -106,7 +106,7 @@
 	sigset_t mask;
 	int status;
 	void RunCmd(commandT** cmd, int n)
-	{
+	{ 
       		int i;
       		total_task = n;
       		if(n == 1)
@@ -334,15 +334,11 @@ static void printjobs() {
 static void changeAlias(char *cmdline)
 {
         /* the command 'alias' */
-        char* command = malloc(5 * sizeof(char) + 1);
-        strncpy(command, cmdline, 5);
-	// printf("%s\n", command);
-     
         /* the command to change to */
         char equal = '=';
         int howMany = 0; //how large the command is
 	char* letter = cmdline + 6; //start after the 'alias' command
-	while (letter != NULL) {
+        while (letter != NULL) {
             if (*letter == equal) {
 	        break;	
             }
@@ -367,13 +363,18 @@ static void changeAlias(char *cmdline)
         }
         char* command_to_change = malloc(howMany * sizeof(char) + 1);
         strncpy(command_to_change, cmdline + 6 + offset + 2, howMany);
-        //printf("command_to_change: %s\n", command_to_change);
-       
-        addtoaliases(command_to_change, command_to_change_to);
  
-        //printf("previous_name: %s\n", aliases->previous_name);
-        //printf("new_name: %s\n", aliases->new_name);
-
+        addtoaliases(command_to_change, command_to_change_to);
+        /*
+        aliaslist *temp = aliases;
+        
+        while (temp != NULL)
+        {
+            printf("temp->previous_name: %s\n", temp->previous_name);
+            printf("temp->new_name: %s\n", temp->new_name);
+            temp = temp->next;
+        }
+        */
         free (command_to_change_to);
         free (command_to_change);
 
@@ -457,23 +458,50 @@ static void addtojobs(pid_t pid, char* cmdline, int status)
 static void addtoaliases(char* previous_name, char* new_name)
 {
       /* add the new job to the of the list */
-      aliaslist *newalias = (aliaslist*)malloc(sizeof(aliaslist));
-      newalias->previous_name = previous_name;
-      newalias->new_name = new_name;
+      //aliaslist *newalias = (aliaslist*)malloc(sizeof(aliaslist));
+      //newalias->previous_name = previous_name;
+      //newalias->new_name = new_name;
+ 
+      bool needUpdated = FALSE;
 
       aliaslist* curr=aliases;
       aliaslist* prev=aliases;
-      while (curr!=NULL) {
+      while (curr != NULL) {
+        if (!strcmp(curr->new_name, new_name))
+        {
+            needUpdated = TRUE;
+            break;
+        }
         prev=curr;
         curr=curr->next;
       }
 
-      if (aliases==NULL) {
-         aliases=newalias;
-      } else {
-         prev->next = newalias;
+      if (needUpdated)
+      {
+        curr->previous_name = previous_name;
       }
-      newalias->next = NULL;
+      else
+      {
+                
+        aliaslist *newalias = (aliaslist*)malloc(sizeof(aliaslist));
+        
+        int prev_len = strlen(previous_name);
+        newalias->previous_name = (char *)malloc(prev_len * sizeof(char) + 1);
+        strncpy(newalias->previous_name, previous_name, prev_len);
+        
+        int new_len = strlen(new_name);
+        newalias->new_name = (char *)malloc(new_len * sizeof(char) + 1);
+        strncpy(newalias->new_name, new_name, new_len);
+        
+        newalias->next = NULL;
+        
+        if (aliases == NULL) {
+            aliases = newalias;
+        } else {
+            prev->next = newalias;
+        }
+        
+      }
 }
 
 
