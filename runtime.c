@@ -80,6 +80,7 @@
 	static bool IsBuiltIn(char*);
   	/* prints the list of jobs */
   	static void printjobs();
+        /* create a new alias */
         static void changeAlias(char *cmdline);
 	/* adds the new job to background job list */ 
 	static void addtojobs(pid_t pid, char* cmdline, int status);
@@ -88,7 +89,7 @@
         /* adds the new alias to the alias list */
         static void addtoaliases(char* previous_name, char* new_name);
         /* removes the alias from the alias list */
-        int removefromaliases(char* alias);
+        int remove_from_aliases(char* alias);
 	/* change status from BG to FG*/
 	pid_t tofg(int jid);
   	pid_t tofg_mostrecent(joblist *jobs);
@@ -273,15 +274,14 @@ static bool ResolveExternalCmd(commandT* cmd)
 
   static bool IsBuiltIn(char* cmd)
   {
-		if (!strcmp(cmd,"fg")) 
-			return TRUE;
-		if (!strcmp(cmd,"bg"))
-			return TRUE;
-		if (!strcmp(cmd,"jobs"))
-			return TRUE;	
-                if (!strcmp(cmd,"alias"))
-			return TRUE;
-		return FALSE;     
+    if ((!strcmp(cmd,"fg")) ||
+       (!strcmp(cmd,"bg")) ||
+       (!strcmp(cmd,"jobs")) ||
+       (!strcmp(cmd,"alias")) ||
+       (!strcmp(cmd,"unalias")))
+           return TRUE;
+
+    return FALSE;     
   }
 
    
@@ -328,12 +328,22 @@ static bool ResolveExternalCmd(commandT* cmd)
         if (cmd->argv[1]==NULL) {
           aliaslist* curr=aliases;
           while (curr != NULL) {
-            printf("alias %s='%s'\n" , curr->previous_name, curr->new_name);
+            printf("alias %s='%s'\n" , curr->new_name, curr->previous_name);
             curr=curr->next;
           }
         }
         else {
           changeAlias(cmd->cmdline);
+        }
+      }
+
+      if (!strcmp(cmd->argv[0],"unalias")) {
+        if (cmd->argv[1]==NULL) {
+          fprintf(stderr, "Must give an argument to unalias");
+        } else {
+          
+          int result = remove_from_aliases(cmd->argv[1]);
+          if (result == 0) printf("No such alias %s\n", cmd->argv[1]);
         }
       }
 }
@@ -349,48 +359,39 @@ static void printjobs() {
 
 static void changeAlias(char *cmdline)
 { 
-        /* the command 'alias' */
         /* the command to change to */
-        char equal = '=';
-        int howMany = 0; //how large the command is
+        int howMany = 0; //how large the new command will be
 	char* letter = cmdline + 6; //start after the 'alias' command
         while (letter != NULL) {
-            if (*letter == equal) {
+            if (*letter == '=') {
 	        break;	
             }
             letter++;
             howMany++;
         }
+        // create our new alias command
         char* command_to_change_to = malloc(howMany * sizeof(char) + 1);
         strncpy(command_to_change_to, cmdline + 6, howMany);
-        //printf("command_to_change to: %s\n", command_to_change_to);
         
         /* the command to change */
-        char quote = '"';
         int offset = howMany;
-        letter = cmdline + 6 + offset + 2; //after the commands and ="
+        letter = cmdline + 6 + offset + 2; //after the new command and ="
         howMany = 0;
         while (letter != NULL) {
-            if (*letter == quote) {
+            if (*letter == '"') {
                 break;
             }
             letter++;
             howMany++;
         }
+        // create the command that will run when the alias command is called
         char* command_to_change = malloc(howMany * sizeof(char) + 1);
         strncpy(command_to_change, cmdline + 6 + offset + 2, howMany);
  
+        // add the command structure to the alias linked list
         addtoaliases(command_to_change, command_to_change_to);
-        /*
-        aliaslist *temp = aliases;
         
-        while (temp != NULL)
-        {
-            printf("temp->previous_name: %s\n", temp->previous_name);
-            printf("temp->new_name: %s\n", temp->new_name);
-            temp = temp->next;
-        }
-        */
+        
         free (command_to_change_to);
         free (command_to_change);
 
@@ -474,15 +475,13 @@ static void addtojobs(pid_t pid, char* cmdline, int status)
 static void addtoaliases(char* previous_name, char* new_name)
 {
       /* add the new job to the of the list */
-      //aliaslist *newalias = (aliaslist*)malloc(sizeof(aliaslist));
-      //newalias->previous_name = previous_name;
-      //newalias->new_name = new_name;
- 
+      //keep track of the fact that we may need to update an alias
       bool needUpdated = FALSE;
 
       aliaslist* curr=aliases;
       aliaslist* prev=aliases;
       while (curr != NULL) {
+        // if we find a match already, then we need to update it
         if (!strcmp(curr->new_name, new_name))
         {
             needUpdated = TRUE;
@@ -494,10 +493,12 @@ static void addtoaliases(char* previous_name, char* new_name)
 
       if (needUpdated)
       {
+        // only need to change the previous name of the command
         curr->previous_name = previous_name;
       }
       else
       {
+        // otherwise, create a new alias structure
         aliaslist *newalias = (aliaslist*)malloc(sizeof(aliaslist));
         
         int prev_len = strlen(previous_name);
@@ -510,12 +511,12 @@ static void addtoaliases(char* previous_name, char* new_name)
         
         newalias->next = NULL;
         
+        // and add it into the linked list where applicable
         if (aliases == NULL) {
             aliases = newalias;
         } else {
             prev->next = newalias;
         }
-
       }
 }
 
@@ -545,7 +546,7 @@ int delfromjobs(pid_t pid)
   return 0;
 }
 
-int removefromaliases(char* alias)
+int remove_from_aliases(char* alias)
 {
   aliaslist* prev = NULL;
   aliaslist* curr = aliases;
@@ -554,7 +555,7 @@ int removefromaliases(char* alias)
     if (!(strcmp(curr->new_name, alias))) {
       if (prev == NULL) {
         aliases = curr->next;
-        break;
+        return 1;
       }
       else {
         prev->next = curr->next;
@@ -566,6 +567,7 @@ int removefromaliases(char* alias)
       curr = curr->next;
     }
   }
+
   return 0;
 
 }

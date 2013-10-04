@@ -106,21 +106,27 @@ int main (int argc, char *argv[])
 		
 		/* interpret command and line
 		 * includes executing of commands */
-                if (aliases != NULL)
+                if (aliases != NULL) //check if we have any aliases
                 { 
+                    // we'll create a new command line with possible aliases
                     char* new_cmdLine = (char*)malloc(BUFSIZE * sizeof(char) + 1);
+                    // make sure we keep track of the fact that we found one
                     bool foundAlias = FALSE;
                     aliaslist *temp = aliases;
 
+                    // this helps us parse out token at the command line
                     char *token;
                     token = strtok (cmdLine, " ");
                     while (token != NULL)
                     {                    
- 
+                      //each token should be separated by a space
                       strcat(new_cmdLine, " ");
 
                       while (temp != NULL) 
                       {
+                        // if we find an aliases from our list that's in the
+                        // old command line, then concatenate the alias to our 
+                        // new command line
                         if (!strcmp(temp->new_name, token))
                         {
                             strcat(new_cmdLine, temp->previous_name);
@@ -130,17 +136,17 @@ int main (int argc, char *argv[])
                         temp = temp->next;   
                       }
 
+                      // if that token doesn't have an alias, just add the
+                      // token back into the new command line
                       if (!foundAlias)
                       {
                           strcat(new_cmdLine, token);
-                          printf("Got here\n");
                       }
-                      printf("command: %s\n", new_cmdLine);
                       foundAlias = FALSE;
-                      token = strtok (NULL, " ");
+                      token = strtok (NULL, " "); //get the next token
                     }
                    
-                     
+                    //create a command to give to the Interpret function
                     int len = strlen(new_cmdLine);
                     char* tempCmd = malloc(sizeof(char) * (size_t)len + 1);
                     strcpy(tempCmd, new_cmdLine);
@@ -149,6 +155,7 @@ int main (int argc, char *argv[])
                 }
                 else
                 {
+                    // if no aliases, procede as normal
 		    Interpret(cmdLine);
                 }
 	}
