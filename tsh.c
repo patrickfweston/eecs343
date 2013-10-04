@@ -132,7 +132,7 @@ int main (int argc, char *argv[])
                             strcat(new_cmdLine, temp->previous_name);
                             foundAlias = TRUE;
                             break;
-                        } 
+                        }
                         temp = temp->next;   
                       }
 

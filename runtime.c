@@ -102,6 +102,7 @@
         /* change status from BG to FG*/
         pid_t tobg(int jid);
         pid_t tobg_mostrecent(joblist *jobs);
+        void changeDirectory(char* command[]);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -273,6 +274,7 @@ static bool ResolveExternalCmd(commandT* cmd)
     if ((!strcmp(cmd,"fg")) ||
        (!strcmp(cmd,"bg")) ||
        (!strcmp(cmd,"jobs")) ||
+       (!strcmp(cmd,"cd")) ||
        (!strcmp(cmd,"alias")) ||
        (!strcmp(cmd,"unalias")))
            return TRUE;
@@ -320,6 +322,9 @@ static bool ResolveExternalCmd(commandT* cmd)
   		if (!strcmp(cmd->argv[0],"jobs")) {
   			printjobs();
   		}
+                if (!strcmp(cmd->argv[0],"cd")) {
+                        changeDirectory(cmd->argv);
+                }
       if (!strcmp(cmd->argv[0],"alias")) {
         if (cmd->argv[1]==NULL) {
           aliaslist* curr=aliases;
@@ -675,4 +680,22 @@ pid_t tobg_mostrecent(joblist *jobs) {
     curr->state = "Running";
   }
   return curr->pid;
+}
+
+void changeDirectory(char* command[])
+{
+    if (command[1] == NULL)
+    {
+        //change directory to ~
+        if (chdir(getenv("HOME")))
+            fprintf(stderr, "Couldn't change to home.\n");
+    }    
+    else
+    {
+        //change directory to command[1]
+        if (chdir(command[1]))
+            fprintf(stderr, "Couldn't change to %s.\n", command[1]);
+        
+    }
+
 }
