@@ -108,26 +108,44 @@ int main (int argc, char *argv[])
 		 * includes executing of commands */
                 if (aliases != NULL)
                 { 
+                    char* new_cmdLine = (char*)malloc(BUFSIZE * sizeof(char) + 1);
                     bool foundAlias = FALSE;
                     aliaslist *temp = aliases;
-                    char* command = malloc(5 * sizeof(char) + 1);
-                    strncpy(command, cmdLine, 5);
-                    while (temp != NULL) 
-                    {
-                        if (!strcmp(temp->new_name, command))
+
+                    char *token;
+                    token = strtok (cmdLine, " ");
+                    while (token != NULL)
+                    {                    
+ 
+                      strcat(new_cmdLine, " ");
+
+                      while (temp != NULL) 
+                      {
+                        if (!strcmp(temp->new_name, token))
                         {
-                        	int len = strlen(temp->previous_name);
-                        	char* tempCmd = malloc(sizeof(char) * (size_t)len + 1);
-                        	strcpy(tempCmd, temp->previous_name);
-                        	Interpret(tempCmd);
+                            strcat(new_cmdLine, temp->previous_name);
                             foundAlias = TRUE;
                             break;
                         } 
                         temp = temp->next;   
+                      }
+
+                      if (!foundAlias)
+                      {
+                          strcat(new_cmdLine, token);
+                          printf("Got here\n");
+                      }
+                      printf("command: %s\n", new_cmdLine);
+                      foundAlias = FALSE;
+                      token = strtok (NULL, " ");
                     }
-                    
-                    if (!foundAlias)
-                        Interpret(cmdLine);
+                   
+                     
+                    int len = strlen(new_cmdLine);
+                    char* tempCmd = malloc(sizeof(char) * (size_t)len + 1);
+                    strcpy(tempCmd, new_cmdLine);
+
+                    Interpret(tempCmd);
                 }
                 else
                 {

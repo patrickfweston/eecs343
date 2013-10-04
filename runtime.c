@@ -85,8 +85,10 @@
 	static void addtojobs(pid_t pid, char* cmdline, int status);
 	/* delete the job from background job list */
 	int delfromjobs(pid_t pid);
-
+        /* adds the new alias to the alias list */
         static void addtoaliases(char* previous_name, char* new_name);
+        /* removes the alias from the alias list */
+        int removefromaliases(char* alias);
 	/* change status from BG to FG*/
 	pid_t tofg(int jid);
   	pid_t tofg_mostrecent(joblist *jobs);
@@ -541,6 +543,31 @@ int delfromjobs(pid_t pid)
     }
   }
   return 0;
+}
+
+int removefromaliases(char* alias)
+{
+  aliaslist* prev = NULL;
+  aliaslist* curr = aliases;
+
+  while(curr != NULL) {
+    if (!(strcmp(curr->new_name, alias))) {
+      if (prev == NULL) {
+        aliases = curr->next;
+        break;
+      }
+      else {
+        prev->next = curr->next;
+        curr = curr->next;
+      }
+    }
+    else {
+      prev = curr;
+      curr = curr->next;
+    }
+  }
+  return 0;
+
 }
 
 /* return pid given jid from bg list */
