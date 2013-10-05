@@ -353,7 +353,7 @@ static bool ResolveExternalCmd(commandT* cmd)
 static void printjobs() {
 	joblist *temp = jobs;
 	while(temp != NULL){
-      		printf("[%d][%d] %s %s\n", temp->jid,temp->pid, temp->state, temp->command);
+      		printf("[%d] %s %s\n", temp->jid, temp->state, temp->command);
       		temp = temp->next;
     	}
 }
