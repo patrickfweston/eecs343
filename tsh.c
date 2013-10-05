@@ -79,7 +79,7 @@ int main (int argc, char *argv[])
 	while (!forceExit) /* repeat forever */
 	{
 		/* print prompt */
-		printf("tsh> ");
+		//printf("tsh> ");
 
 		/* read command line */
 		getCommandLine(&cmdLine, BUFSIZE);
@@ -186,9 +186,9 @@ static void sig(int signo)
             temp->state = "Stopped";
             temp->status = ST;
 	    if (signo == SIGTSTP) {
-    	  	printf("[%d][%d] stopped by Ctrl-Z \n", temp->jid, temp->pid);
+    	  	printf("[%d] %s %s\n", temp->jid, temp->state, temp->command);
     	    } else {
-		printf("[%d][%d] interrupted by Ctrl-C \n",temp->jid, temp->pid);
+		printf("[%d] %s %s\n", temp->jid, temp->state, temp->command);
 	    }
 		break;
           }
@@ -215,7 +215,6 @@ static void sigchld_handler(int signo)
 		fgjob->status = ST;
 		sleep(0);
 		/* delete from job list */
-                /* printf("pid:[%d] %s \n",fgjob->pid,fgjob->state); */
         	delfromjobs(pid);
 	} else {	
 		/* print error message */
