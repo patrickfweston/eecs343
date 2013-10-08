@@ -75,7 +75,7 @@ int main (int argc, char *argv[])
 	if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
 	if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
 	if (signal(SIGCHLD, sigchld_handler) == SIG_ERR) PrintPError("SIGCHLD");
-	
+
 	while (!forceExit) /* repeat forever */
 	{
 		/* print prompt */
@@ -102,7 +102,7 @@ int main (int argc, char *argv[])
 		/* printf("%s", cmdLine); */
 
 		/* checks the status of background jobs */
-		CheckJobs();
+		CheckJobs(dones);
 		
 		/* interpret command and line
 		 * includes executing of commands */
@@ -212,6 +212,10 @@ static void sigchld_handler(int signo)
 	{
 		/* change the status of the job so that waitfg can stop*/
         	joblist* fgjob = findjob(pid);
+                if (fgjob->status == BG)
+                {
+                    addtodonelist(fgjob);
+                }
 		fgjob->status = ST;
 		sleep(0);
 		/* delete from job list */

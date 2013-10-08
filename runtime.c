@@ -404,31 +404,38 @@ static void changeAlias(char *cmdline)
 
 void CheckJobs()	
 {
-    joblist* ajob = jobs;
-
-    while (ajob != NULL)
+    donelist* done = dones;
+    while (done != NULL)
     {
-        char path[80];
-        char result[80];
-        char* command = "/home/aqualab/Desktop/eecs343/check_script.sh ";
-        char newcommand[128];
-        char str[10];
-        sprintf(str, "%d", (int)ajob->pid);
-        sprintf(newcommand, "%s%s'", command, str); 
-        printf("command: %s\n", newcommand);
-        FILE* myscript = popen(newcommand, "r");
-        printf("get here1\n"); 
-        fgets(path, 20, myscript);
-        strcpy(result, path);
-        printf("got here2\n");
-
-        pclose(myscript);
-        
-        if (!strcmp(result, "not running"))
-            printf("result: %s\n", result);
-        
-        ajob = ajob->next;
+        printf("[%d]   Done                    %s\n", done->job->jid, done->job->command);
+        done = done->next;
     }
+
+    dones = NULL;
+}
+
+void addtodonelist(joblist* job)
+{
+    donelist* temp = (donelist*)malloc(sizeof(donelist));
+    temp->job = job;
+
+    donelist* curr=dones;
+    donelist* prev=dones;
+
+    while (curr != NULL)
+    {
+        prev=curr;
+        curr=curr->next;      
+    }
+
+    if (dones == NULL)
+    {
+        dones = temp;
+    } else {
+        prev->next = temp;
+    }  
+
+    temp->next = NULL;
 }
 
 commandT* CreateCmdT(int n)
