@@ -1,5 +1,5 @@
-./myspin 4 &
-./myspin 5 
+./myspin1 4 &
+./myspin1 5 
 SLEEP 2
 TSTP
 SLEEP 1

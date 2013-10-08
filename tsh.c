@@ -186,9 +186,9 @@ static void sig(int signo)
             temp->state = "Stopped";
             temp->status = ST;
 	    if (signo == SIGTSTP) {
-    	  	printf("[%d] %s %s\n", temp->jid, temp->state, temp->command);
+    	  	printf("[%d]   %s                 %s\n", temp->jid, temp->state, temp->command);
     	    } else {
-		printf("[%d] %s %s\n", temp->jid, temp->state, temp->command);
+		printf("[%d]   %s                 %s\n", temp->jid, temp->state, temp->command);
 	    }
 		break;
           }
@@ -231,7 +231,7 @@ static void sigchld_handler(int signo)
 void killAllJobs(joblist* jobs) {
 	joblist* temp = jobs;
 	while (temp != NULL) {
-        kill(-temp->pid, SIGINT);
-		temp = temp->next;
-    }
+            kill(-temp->pid, SIGINT);
+            temp = temp->next;
+        }
 }

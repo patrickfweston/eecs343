@@ -296,7 +296,7 @@ static bool ResolveExternalCmd(commandT* cmd)
   					waitfg(temp_pid);
          		 	}
         		/* Job number passed */
-  			} else if(cmd->argv[1] != NULL) {
+  			} else if((cmd->argv[1] != NULL) && (jobs != NULL)) {
           			// Restart the process if it has been stopped
   				pid_t temp_pid = tofg(atoi(cmd->argv[1]));
           			if(temp_pid != (pid_t)-1) {
@@ -304,7 +304,10 @@ static bool ResolveExternalCmd(commandT* cmd)
   				    //waitpid(temp_pid, &status, WUNTRACED);
   				    waitfg(temp_pid);
           			}
-  			}
+  			} else {
+                            printf("fg: current: no such job\n");
+                        }
+                        
    		}			 
     		if (!strcmp(cmd->argv[0],"bg")) {
   			if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
@@ -312,12 +315,14 @@ static bool ResolveExternalCmd(commandT* cmd)
           			if(temp_pid != (pid_t)-1) {
     					kill(temp_pid, SIGCONT);
           			}
-  			} else if(cmd->argv[1] != NULL) {
+  			} else if((cmd->argv[1] != NULL) && (jobs != NULL)) {
           			pid_t temp_pid = tobg(atoi(cmd->argv[1]));
   				if(temp_pid != (pid_t)-1) {
             				kill(temp_pid, SIGCONT);
           			}
-  			}
+  			} else {
+                                printf("bg: current: no such job\n");
+                        }
  		} 			
   		if (!strcmp(cmd->argv[0],"jobs")) {
   			printjobs();
@@ -353,11 +358,13 @@ static bool ResolveExternalCmd(commandT* cmd)
 static void printjobs() {
 	joblist *temp = jobs;
 	while(temp != NULL){
-                char command[80];
-                strcpy(command, temp->command);
-                if (temp->status == BG)
-                    strcat(command, "&");
-      		printf("[%d]   %s                 %s\n", temp->jid, temp->state, command);
+                //char command[80];
+                //strncpy(command, temp->command, strlen(temp->command) + 1);
+                //if (temp->status == BG)
+                strcat(temp->command, "&");
+
+      		printf("[%d]   %s                 %s\n", temp->jid, temp->state, temp->command);
+                temp->command[strlen(temp->command) - 1] = '\0';
       		temp = temp->next;
     	}
 }
@@ -629,13 +636,13 @@ pid_t tofg(int jid)
 		curr = curr->next;
 	}
 	if (curr==NULL) {
-    printf("error: cannot find job \n");
-    return (pid_t)-1;
-  }
+            printf("fg: current: no such job\n");
+            return (pid_t)-1;
+        }
 	else {
-    curr->status = FG;
-  }
-  return curr->pid;
+            curr->status = FG;
+        }
+        return curr->pid;
 }
 
 pid_t tofg_mostrecent(joblist *jobs) 
@@ -690,7 +697,7 @@ pid_t tobg(int jid)
     curr = curr->next;
   }
   if (curr==NULL) {
-    printf("error: cannot find job \n");
+    printf("bg: current: no such job\n");
     return (pid_t)-1;
   }
   else {
