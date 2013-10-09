@@ -520,6 +520,7 @@ static void addtoaliases(char* previous_name, char* new_name)
       /* add the new job to the of the list */
       //keep track of the fact that we may need to update an alias
       bool needUpdated = FALSE;
+      bool insertBefore = FALSE;
 
       aliaslist* curr=aliases;
       aliaslist* prev=aliases;
@@ -530,6 +531,15 @@ static void addtoaliases(char* previous_name, char* new_name)
             needUpdated = TRUE;
             break;
         }
+
+        // insert in back of the next one, because it appears before it
+        // in the alphabet
+        if (strcmp(curr->new_name, new_name) > 0)
+        {
+            insertBefore = TRUE;
+            break;
+        } 
+ 
         prev=curr;
         curr=curr->next;
       }
@@ -552,13 +562,28 @@ static void addtoaliases(char* previous_name, char* new_name)
         newalias->new_name = (char *)malloc(new_len * sizeof(char) + 1);
         strncpy(newalias->new_name, new_name, new_len);
         
-        newalias->next = NULL;
-        
-        // and add it into the linked list where applicable
-        if (aliases == NULL) {
+        if (insertBefore)
+        {
+          if (curr == prev)
+          {
+            newalias->next = curr;
             aliases = newalias;
-        } else {
+          } else {
             prev->next = newalias;
+            newalias->next = curr;
+          }
+
+        } else {
+        
+          newalias->next = NULL;
+        
+          // and add it into the linked list where applicable
+          if (aliases == NULL) {
+              aliases = newalias;
+          } else {
+              prev->next = newalias;
+          }
+
         }
       }
 }
@@ -603,6 +628,7 @@ int remove_from_aliases(char* alias)
       else {
         prev->next = curr->next;
         curr = curr->next;
+        return 1;
       }
     }
     else {
