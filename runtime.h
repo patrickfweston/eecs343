@@ -99,6 +99,13 @@
         };
         typedef struct alias_l aliaslist;
         aliaslist *aliases;
+
+        struct done_l {
+            struct job_l* job;
+            struct done_l* next;
+        };
+        typedef struct done_l donelist;
+        donelist *dones;
 	
   /************Function Prototypes******************************************/
 	
@@ -137,6 +144,8 @@
 	 *    Output: void
 	 ***********************************************************************/
 	EXTERN void RunCmdRedirInOut(commandT*);
+
+        //EXTERN void RunCmdRedirOut(commandT*, char*);
 
 	/***********************************************************************
 	 *  Title: Runs two command with input redirection
@@ -200,7 +209,7 @@
 	 *    Output: void 
 	 ***********************************************************************/
 	EXTERN void CheckJobs();
-
+        EXTERN void addtodonelist(joblist* job);
 	EXTERN int delfromjobs(pid_t);
 	EXTERN joblist* findjob(pid_t pid);
 	

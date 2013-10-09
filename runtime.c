@@ -80,13 +80,16 @@
 	static bool IsBuiltIn(char*);
   	/* prints the list of jobs */
   	static void printjobs();
+        /* create a new alias */
         static void changeAlias(char *cmdline);
 	/* adds the new job to background job list */ 
 	static void addtojobs(pid_t pid, char* cmdline, int status);
 	/* delete the job from background job list */
 	int delfromjobs(pid_t pid);
-
+        /* adds the new alias to the alias list */
         static void addtoaliases(char* previous_name, char* new_name);
+        /* removes the alias from the alias list */
+        int remove_from_aliases(char* alias);
 	/* change status from BG to FG*/
 	pid_t tofg(int jid);
   	pid_t tofg_mostrecent(joblist *jobs);
@@ -99,6 +102,7 @@
         /* change status from BG to FG*/
         pid_t tobg(int jid);
         pid_t tobg_mostrecent(joblist *jobs);
+        void changeDirectory(char* command[]);
   /************External Declaration*****************************************/
 
 /**************Implementation***********************************************/
@@ -109,16 +113,17 @@
 	{ 
       		int i;
       		total_task = n;
-      		if(n == 1)
-			if ((cmd[0]->is_redirect_in)||(cmd[0]->is_redirect_out)) {
-				RunCmdRedirInOut(cmd[0]);
-			}  else {
-				RunCmdFork(cmd[0], TRUE);
-			}
-      		else {
-        		RunCmdPipe(cmd[0], cmd[1]);
-        		for(i = 0; i < n; i++)
-         		   ReleaseCmdT(&cmd[i]);
+      		if(n == 1) {
+                  if ((cmd[0]->is_redirect_in) || (cmd[0]->is_redirect_out)) {
+                      RunCmdRedirInOut(cmd[0]);
+                  } else {
+                      RunCmdFork(cmd[0], TRUE);
+                  }
+                }
+        	else {	
+                    RunCmdPipe(cmd[0], cmd[1]);
+                    for(i = 0; i < n; i++)
+                        ReleaseCmdT(&cmd[i]);
       		}
 	}
 	
@@ -143,28 +148,11 @@
 
 	void RunCmdPipe(commandT* cmd1, commandT* cmd2)
 	{
-            /*
-            //cmd1's stdout becomes cmd2's stdin
-            //RunCmdFork(cmd1, TRUE);
-            FILE *output;
-            output = popen (cmd1->name, "r");
-            if (!output)
-            {
-                fprintf(stderr, "Could not run command");
-            }
-            else
-            {
-                char buffer[1024];
-                sprintf(buffer, "%s", output);
-                execv(cmd2->name, output);
-                pclose(output); 
-            }
-            */
-	}
-
-	void RunCmdRedirInOut(commandT* cmd)
-	{	
-		int save_stdout = dup(1); 
+        }
+ 
+        void RunCmdRedirInOut(commandT* cmd)
+        {
+           int save_stdout = dup(1); 
 		int save_stdin = dup(0);
 		if (cmd->is_redirect_out) {
 			int fid_out = open(cmd->redirect_out, O_RDWR | O_CREAT,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -181,20 +169,7 @@
 		RunExternalCmd(cmd, TRUE);
 		dup2(save_stdout, 1);
 		dup2(save_stdin, 0);
-	}
-
-/*---
-	void RunCmdRedirIn(commandT* cmd, char* file)
-	{
-		int save_stdin = dup(0);
-		int fid = open(file, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-        	close(0);
-        	dup2(fid, 0);
-        	close(fid);
-		//RunExternalCmd(cmd, TRUE);
-		dup2(save_stdin, 0);
-	}
---*/
+        }
 
 /*Try to run an external command*/
 static void RunExternalCmd(commandT* cmd, bool fork)
@@ -296,15 +271,15 @@ static bool ResolveExternalCmd(commandT* cmd)
 
   static bool IsBuiltIn(char* cmd)
   {
-		if (!strcmp(cmd,"fg")) 
-			return TRUE;
-		if (!strcmp(cmd,"bg"))
-			return TRUE;
-		if (!strcmp(cmd,"jobs"))
-			return TRUE;	
-                if (!strcmp(cmd,"alias"))
-			return TRUE;
-		return FALSE;     
+    if ((!strcmp(cmd,"fg")) ||
+       (!strcmp(cmd,"bg")) ||
+       (!strcmp(cmd,"jobs")) ||
+       (!strcmp(cmd,"cd")) ||
+       (!strcmp(cmd,"alias")) ||
+       (!strcmp(cmd,"unalias")))
+           return TRUE;
+
+    return FALSE;     
   }
 
    
@@ -321,7 +296,7 @@ static bool ResolveExternalCmd(commandT* cmd)
   					waitfg(temp_pid);
          		 	}
         		/* Job number passed */
-  			} else if(cmd->argv[1] != NULL) {
+  			} else if((cmd->argv[1] != NULL) && (jobs != NULL)) {
           			// Restart the process if it has been stopped
   				pid_t temp_pid = tofg(atoi(cmd->argv[1]));
           			if(temp_pid != (pid_t)-1) {
@@ -329,7 +304,10 @@ static bool ResolveExternalCmd(commandT* cmd)
   				    //waitpid(temp_pid, &status, WUNTRACED);
   				    waitfg(temp_pid);
           			}
-  			}
+  			} else {
+                            printf("fg: current: no such job\n");
+                        }
+                        
    		}			 
     		if (!strcmp(cmd->argv[0],"bg")) {
   			if ((cmd->argv[1]==NULL) && (jobs != NULL))  {
@@ -337,74 +315,94 @@ static bool ResolveExternalCmd(commandT* cmd)
           			if(temp_pid != (pid_t)-1) {
     					kill(temp_pid, SIGCONT);
           			}
-  			} else if(cmd->argv[1] != NULL) {
+  			} else if((cmd->argv[1] != NULL) && (jobs != NULL)) {
           			pid_t temp_pid = tobg(atoi(cmd->argv[1]));
   				if(temp_pid != (pid_t)-1) {
             				kill(temp_pid, SIGCONT);
           			}
-  			}
+  			} else {
+                                printf("bg: current: no such job\n");
+                        }
  		} 			
   		if (!strcmp(cmd->argv[0],"jobs")) {
   			printjobs();
   		}
-                if (!strcmp(cmd->argv[0],"alias")) {
-			changeAlias(cmd->cmdline);
+                if (!strcmp(cmd->argv[0],"cd")) {
+                        changeDirectory(cmd->argv);
                 }
+      if (!strcmp(cmd->argv[0],"alias")) {
+        if (cmd->argv[1]==NULL) {
+          aliaslist* curr=aliases;
+          while (curr != NULL) {
+            printf("alias %s='%s'\n" , curr->new_name, curr->previous_name);
+            curr=curr->next;
+          }
+        }
+        else {
+          changeAlias(cmd->cmdline);
+        }
+      }
+
+      if (!strcmp(cmd->argv[0],"unalias")) {
+        if (cmd->argv[1]==NULL) {
+          fprintf(stderr, "Must give an argument to unalias");
+        } else {
+          
+          int result = remove_from_aliases(cmd->argv[1]);
+          if (result == 0) printf("No such alias %s\n", cmd->argv[1]);
+        }
+      }
 }
 
 /* print all the jobs in the job list */
 static void printjobs() {
 	joblist *temp = jobs;
 	while(temp != NULL){
-      		printf("[%d][%d] %s %s\n", temp->jid,temp->pid, temp->state, temp->command);
+                //char command[80];
+                //strncpy(command, temp->command, strlen(temp->command) + 1);
+                if (temp->status == BG) strcat(temp->command, " &");
+
+      		printf("[%d]   %s                 %s\n", temp->jid, temp->state, temp->command);
+                if (temp->status == BG) temp->command[strlen(temp->command) - 1] = '\0';
       		temp = temp->next;
     	}
 }
 
 static void changeAlias(char *cmdline)
-{
-        /* the command 'alias' */
+{ 
         /* the command to change to */
-        char equal = '=';
-        int howMany = 0; //how large the command is
+        int howMany = 0; //how large the new command will be
 	char* letter = cmdline + 6; //start after the 'alias' command
         while (letter != NULL) {
-            if (*letter == equal) {
+            if (*letter == '=') {
 	        break;	
             }
             letter++;
             howMany++;
         }
+        // create our new alias command
         char* command_to_change_to = malloc(howMany * sizeof(char) + 1);
         strncpy(command_to_change_to, cmdline + 6, howMany);
-        //printf("command_to_change to: %s\n", command_to_change_to);
         
         /* the command to change */
-        char quote = '"';
         int offset = howMany;
-        letter = cmdline + 6 + offset + 2; //after the commands and ="
+        letter = cmdline + 6 + offset + 2; //after the new command and ="
         howMany = 0;
         while (letter != NULL) {
-            if (*letter == quote) {
+            if (*letter == '\'') {
                 break;
             }
             letter++;
             howMany++;
         }
+        // create the command that will run when the alias command is called
         char* command_to_change = malloc(howMany * sizeof(char) + 1);
         strncpy(command_to_change, cmdline + 6 + offset + 2, howMany);
  
+        // add the command structure to the alias linked list
         addtoaliases(command_to_change, command_to_change_to);
-        /*
-        aliaslist *temp = aliases;
         
-        while (temp != NULL)
-        {
-            printf("temp->previous_name: %s\n", temp->previous_name);
-            printf("temp->new_name: %s\n", temp->new_name);
-            temp = temp->next;
-        }
-        */
+        
         free (command_to_change_to);
         free (command_to_change);
 
@@ -412,6 +410,38 @@ static void changeAlias(char *cmdline)
 
 void CheckJobs()	
 {
+    donelist* done = dones;
+    while (done != NULL)
+    {
+        printf("[%d]   Done                    %s\n", done->job->jid, done->job->command);
+        done = done->next;
+    }
+
+    dones = NULL;
+}
+
+void addtodonelist(joblist* job)
+{
+    donelist* temp = (donelist*)malloc(sizeof(donelist));
+    temp->job = job;
+
+    donelist* curr=dones;
+    donelist* prev=dones;
+
+    while (curr != NULL)
+    {
+        prev=curr;
+        curr=curr->next;      
+    }
+
+    if (dones == NULL)
+    {
+        dones = temp;
+    } else {
+        prev->next = temp;
+    }  
+
+    temp->next = NULL;
 }
 
 commandT* CreateCmdT(int n)
@@ -488,15 +518,13 @@ static void addtojobs(pid_t pid, char* cmdline, int status)
 static void addtoaliases(char* previous_name, char* new_name)
 {
       /* add the new job to the of the list */
-      //aliaslist *newalias = (aliaslist*)malloc(sizeof(aliaslist));
-      //newalias->previous_name = previous_name;
-      //newalias->new_name = new_name;
- 
+      //keep track of the fact that we may need to update an alias
       bool needUpdated = FALSE;
 
       aliaslist* curr=aliases;
       aliaslist* prev=aliases;
       while (curr != NULL) {
+        // if we find a match already, then we need to update it
         if (!strcmp(curr->new_name, new_name))
         {
             needUpdated = TRUE;
@@ -508,11 +536,12 @@ static void addtoaliases(char* previous_name, char* new_name)
 
       if (needUpdated)
       {
+        // only need to change the previous name of the command
         curr->previous_name = previous_name;
       }
       else
       {
-                
+        // otherwise, create a new alias structure
         aliaslist *newalias = (aliaslist*)malloc(sizeof(aliaslist));
         
         int prev_len = strlen(previous_name);
@@ -525,12 +554,12 @@ static void addtoaliases(char* previous_name, char* new_name)
         
         newalias->next = NULL;
         
+        // and add it into the linked list where applicable
         if (aliases == NULL) {
             aliases = newalias;
         } else {
             prev->next = newalias;
         }
-        
       }
 }
 
@@ -560,6 +589,32 @@ int delfromjobs(pid_t pid)
   return 0;
 }
 
+int remove_from_aliases(char* alias)
+{
+  aliaslist* prev = NULL;
+  aliaslist* curr = aliases;
+
+  while(curr != NULL) {
+    if (!(strcmp(curr->new_name, alias))) {
+      if (prev == NULL) {
+        aliases = curr->next;
+        return 1;
+      }
+      else {
+        prev->next = curr->next;
+        curr = curr->next;
+      }
+    }
+    else {
+      prev = curr;
+      curr = curr->next;
+    }
+  }
+
+  return 0;
+
+}
+
 /* return pid given jid from bg list */
 /*
 static pid_t jid2pid(int jid) {
@@ -580,13 +635,13 @@ pid_t tofg(int jid)
 		curr = curr->next;
 	}
 	if (curr==NULL) {
-    printf("error: cannot find job \n");
-    return (pid_t)-1;
-  }
+            printf("fg: current: no such job\n");
+            return (pid_t)-1;
+        }
 	else {
-    curr->status = FG;
-  }
-  return curr->pid;
+            curr->status = FG;
+        }
+        return curr->pid;
 }
 
 pid_t tofg_mostrecent(joblist *jobs) 
@@ -641,7 +696,7 @@ pid_t tobg(int jid)
     curr = curr->next;
   }
   if (curr==NULL) {
-    printf("error: cannot find job \n");
+    printf("bg: current: no such job\n");
     return (pid_t)-1;
   }
   else {
@@ -669,20 +724,20 @@ pid_t tobg_mostrecent(joblist *jobs) {
   return curr->pid;
 }
 
-/*
- redirect stdout 
-void redir_stdout(char* filename) {
-	fid = open(filename, O_WRONGLY | O_CREAT);
-	close(1);
-	dup2(fid,1);
-	close(fid);
-} 
+void changeDirectory(char* command[])
+{
+    if (command[1] == NULL)
+    {
+        //change directory to ~
+        if (chdir(getenv("HOME")))
+            fprintf(stderr, "Couldn't change to home.\n");
+    }    
+    else
+    {
+        //change directory to command[1]
+        if (chdir(command[1]))
+            fprintf(stderr, "Couldn't change to %s.\n", command[1]);
+        
+    }
 
- redirect stdin 
-void redir_stdin(char* filename) {
-	fid = open(filename, O_RDONGLY);
-	close(0);
-	dup2(fid, 0);
-	close(fid);
 }
-*/	

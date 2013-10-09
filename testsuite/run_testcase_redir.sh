@@ -47,7 +47,7 @@ cd ${TMP} || { cleanUp; exit 1; }
 sh ${TC_DIR}/setup.sh;
 cp ${TC_DIR}/${SDRIVER} .;
 cp ${TC_DIR}/${ORIG} .;
-gcc ${TC_DIR}/myspin.c -o myspin
+gcc ${TC_DIR}/myspin.c -o myspin1
 
 # Compile the code
 echo "COMPILE"

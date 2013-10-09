@@ -68,6 +68,7 @@
 
 int main (int argc, char *argv[])
 {
+	setvbuf(stdout, NULL,_IONBF, 0);
 	/* Initialize command buffer */
 	char* cmdLine = malloc(sizeof(char*)*BUFSIZE);
 	
@@ -75,11 +76,11 @@ int main (int argc, char *argv[])
 	if (signal(SIGINT, sig) == SIG_ERR) PrintPError("SIGINT");
 	if (signal(SIGTSTP, sig) == SIG_ERR) PrintPError("SIGTSTP");
 	if (signal(SIGCHLD, sigchld_handler) == SIG_ERR) PrintPError("SIGCHLD");
-	
+
 	while (!forceExit) /* repeat forever */
 	{
 		/* print prompt */
-		printf("tsh> ");
+		//printf("tsh> ");
 
 		/* read command line */
 		getCommandLine(&cmdLine, BUFSIZE);
@@ -102,32 +103,60 @@ int main (int argc, char *argv[])
 		/* printf("%s", cmdLine); */
 
 		/* checks the status of background jobs */
-		CheckJobs();
+		CheckJobs(dones);
 		
 		/* interpret command and line
 		 * includes executing of commands */
-                if (aliases != NULL)
+                if (aliases != NULL) //check if we have any aliases
                 { 
+                    // we'll create a new command line with possible aliases
+                    char* new_cmdLine = (char*)malloc(BUFSIZE * sizeof(char) + 1);
+                    // make sure we keep track of the fact that we found one
                     bool foundAlias = FALSE;
                     aliaslist *temp = aliases;
-                    char* command = malloc(5 * sizeof(char) + 1);
-                    strncpy(command, cmdLine, 5);
-                    while (temp != NULL) 
-                    {
-                        if (!strcmp(temp->new_name, command))
+
+                    // this helps us parse out token at the command line
+                    char *token;
+                    token = strtok (cmdLine, " ");
+                    while (token != NULL)
+                    {                    
+                      //each token should be separated by a space
+                      strcat(new_cmdLine, " ");
+
+                      while (temp != NULL) 
+                      {
+                        // if we find an aliases from our list that's in the
+                        // old command line, then concatenate the alias to our 
+                        // new command line
+                        if (!strcmp(temp->new_name, token))
                         {
-                            Interpret(temp->previous_name);
+                            strcat(new_cmdLine, temp->previous_name);
                             foundAlias = TRUE;
                             break;
-                        } 
+                        }
                         temp = temp->next;   
+                      }
+
+                      // if that token doesn't have an alias, just add the
+                      // token back into the new command line
+                      if (!foundAlias)
+                      {
+                          strcat(new_cmdLine, token);
+                      }
+                      foundAlias = FALSE;
+                      token = strtok (NULL, " "); //get the next token
                     }
-                    
-                    if (!foundAlias)
-                        Interpret(cmdLine);
+                   
+                    //create a command to give to the Interpret function
+                    int len = strlen(new_cmdLine);
+                    char* tempCmd = malloc(sizeof(char) * (size_t)len + 1);
+                    strcpy(tempCmd, new_cmdLine);
+
+                    Interpret(tempCmd);
                 }
                 else
                 {
+                    // if no aliases, procede as normal
 		    Interpret(cmdLine);
                 }
 	}
@@ -143,7 +172,7 @@ static void sig(int signo)
     if (signo == SIGINT || signo == SIGTSTP)
     {
       joblist *temp = jobs;
-      printf("\n");
+      //printf("\n");
       while (temp != NULL) {
           // Find the foreground job and kill it
           if (temp->status == FG) {
@@ -158,18 +187,18 @@ static void sig(int signo)
             temp->state = "Stopped";
             temp->status = ST;
 	    if (signo == SIGTSTP) {
-    	  	printf("[%d][%d] stopped by Ctrl-Z \n", temp->jid, temp->pid);
+    	  	printf("[%d]   %s                 %s\n", temp->jid, temp->state, temp->command);
     	    } else {
-		printf("[%d][%d] interrupted by Ctrl-C \n",temp->jid, temp->pid);
+		printf("[%d]   %s                 %s\n", temp->jid, temp->state, temp->command);
 	    }
 		break;
           }
           temp = temp->next;
       } 
       if (temp == NULL) {
-		killAllJobs(jobs);
-		forceExit=TRUE;
-		exit(0);
+		//killAllJobs(jobs);
+		//forceExit=TRUE;
+		//exit(0);
       }
     }
 }
@@ -184,10 +213,13 @@ static void sigchld_handler(int signo)
 	{
 		/* change the status of the job so that waitfg can stop*/
         	joblist* fgjob = findjob(pid);
+                if (fgjob->status == BG)
+                {
+                    addtodonelist(fgjob);
+                }
 		fgjob->status = ST;
 		sleep(0);
 		/* delete from job list */
-                /* printf("pid:[%d] %s \n",fgjob->pid,fgjob->state); */
         	delfromjobs(pid);
 	} else {	
 		/* print error message */
@@ -200,7 +232,7 @@ static void sigchld_handler(int signo)
 void killAllJobs(joblist* jobs) {
 	joblist* temp = jobs;
 	while (temp != NULL) {
-        kill(-temp->pid, SIGINT);
-		temp = temp->next;
-    }
+            kill(-temp->pid, SIGINT);
+            temp = temp->next;
+        }
 }
