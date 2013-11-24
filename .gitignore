@@ -1,5 +1,4 @@
 *.in
-*.o
 tsh
 test_type
 *.gz
